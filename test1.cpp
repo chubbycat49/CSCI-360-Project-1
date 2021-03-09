@@ -13,5 +13,5 @@ int main(){
 	int f=8,g=9;
 	int h[2]={10,11};
 	int i=0;
-	i=test(a,b,c,d,e,f,g,h)
+	i=test(a,b,c,d,e,f,g,h);
 }
