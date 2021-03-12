@@ -89,9 +89,6 @@ void function_handler(vector<string> source, int loc, int max_len) {
     }
 }
 
-string to_string() {
-}
-
 /*
     Return if given code line is a function call
 */
