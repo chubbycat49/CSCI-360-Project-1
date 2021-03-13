@@ -1,10 +1,12 @@
-#include <Function.h>
-#include <Variable.h>
-
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <regex>
+#include <string>
 #include <vector>
+
+#include "Function.h"
+#include "Variable.h"
 
 using namespace std;
 
@@ -145,6 +147,14 @@ void common_instruction_handler_dispatcher(string *source, int &loc, int max_len
         arithmetic_handler(source[loc], f1);
         loc++;
     }
+}
+
+/*
+    Helper function which given a string and a deliminator, creates a iterator of the split tokens
+    Sourced from: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+*/
+vector<string> split(const string str, const string regex_str) {
+    return {sregex_token_iterator(str.begin(), str.end(), regex(regex_str), -1), sregex_token_iterator()};
 }
 
 /*
