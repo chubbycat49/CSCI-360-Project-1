@@ -1,3 +1,8 @@
+#ifndef VARIABLE_H
+#define VARIABLE_H
+
+#include <string>
+
 using namespace std;
 
 class Variable {
@@ -8,7 +13,9 @@ class Variable {
     Variable(string t, int a);
 };
 
-Variable::Variable(string t, int a){
-  type = t;
-  addr_offset = a;
+Variable::Variable(string t, int a) {
+    type = t;
+    addr_offset = a;
 }
+
+#endif
