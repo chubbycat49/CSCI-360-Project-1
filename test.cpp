@@ -40,20 +40,48 @@ static inline void trim(string &s) {
 }
 
 /*
-    Handle variable declaration statements
+    Handle variable declaration statements.
+    If "[" and "]" in line, then it's an array declaration,
+    otherwise it is a primative variable declaration.
 */
 void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset) {
-    // if brackets, array declaration
-    // else primative
     if (source[loc].find("[") != string::npos && source[loc].find("]") != string::npos) {
-        cout << "array" << endl;
-    } else {
+        /*
+        */
         string var_type = "int";
+        string delimiter = " = ";
+        auto tokens = split(source[loc].substr(source[loc].find(" ")+1), delimiter); // only work with part after "int "
+        trim(tokens[0]);
+        trim(tokens[1]);
 
+        auto array_name = tokens[0];
+        auto temp = split(array_name, "\\["); // [ needs to be escaped with \ and then that \ needs to be escaped for C++ complier
+        array_name = temp[0];
+        
+        int array_size = stoi(temp[1].substr(0, temp[1].size()-1));
+        
+        auto array_values_str = tokens[1];
+        auto array_values = split(array_values_str.substr(1, array_values_str.size()-2), ", ");
+
+        for (int i = array_size-1; i >= 0; --i) {
+            int val = stoi(array_values[i]);
+            string name = array_name + "[" + to_string(i) + "]";
+            int arr_addr_offset = addr_offset - (i * 4);
+
+            Variable var (name, var_type, val, addr_offset);
+            f1.variables.push_back(var);
+            f1.assembly_instructions.push_back("movl $" + array_values[i] + ", " + to_string(arr_addr_offset) + "(%rbp)");
+        }
+        addr_offset -= (array_size * 4);
+    } else {
+        
+        /*
+            Split variables by , and then by space to parse the name and value
+        */
+        string var_type = "int";
         string delimiter = ",";
-        auto tokens = split(source[loc].substr(source[loc].find(" ")+1), delimiter);
+        auto tokens = split(source[loc].substr(source[loc].find(" ")+1), delimiter); // only work with part after "int "
 
-        // movl value dest
         for (auto& item: tokens) {
             trim(item);
 
@@ -66,11 +94,6 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
             f1.variables.push_back(var);
             f1.assembly_instructions.push_back("movl $" + var_tokens[2] + ", " + to_string(addr_offset) + "(%rbp)");
             addr_offset -= 4;
-            // for (auto& t: var_tokens) {
-
-            // }
-            // cout << item << endl;
-            // cout << endl;
         }
     }
 }
@@ -85,23 +108,27 @@ void view_function(Function &f1) {
         cout << x << endl;
     }
 
-    for (auto x: f1.variables) {
-        cout << x.type << " " << x.name << " " << x.value << " " << x.addr_offset << endl;
-    }
+    // for (auto x: f1.variables) {
+    //     cout << x.type << " " << x.name << " " << x.value << " " << x.addr_offset << endl;
+    // }
 }
 
 int main() {
     string str1 = "int a = 1, b = 2, c = 3, d = 4;";
     string str2 = "int e[3] = {5, 6, 7};";
+    string str3 = "int f = 8, g = 9;";
 
     vector<string> sources;
     sources.push_back(str1);
     sources.push_back(str2);
+    sources.push_back(str3);
     int loc = 0;
     Function f1;
     intialize_function(f1);
     int addr_offset = -4;
 
-    variable_offset_allocation(sources, loc, f1, addr_offset);
+    for (int i = 0; i < sources.size(); ++i) {
+        variable_offset_allocation(sources, i, f1, addr_offset);
+    }
     view_function(f1);
 }
