@@ -47,6 +47,7 @@ static inline void trim(string &s) {
 void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset) {
     if (source[loc].find("[") != string::npos && source[loc].find("]") != string::npos) {
         /*
+            Split line by = and then by the [] to parse the name, size and values
         */
         string var_type = "int";
         string delimiter = " = ";
@@ -61,7 +62,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
         int array_size = stoi(temp[1].substr(0, temp[1].size()-1));
         
         auto array_values_str = tokens[1];
-        auto array_values = split(array_values_str.substr(1, array_values_str.size()-2), ", ");
+        auto array_values = split(array_values_str.substr(1, array_values_str.size()-2), ", "); // removes { and } and splits into int values
 
         for (int i = array_size-1; i >= 0; --i) {
             int val = stoi(array_values[i]);
