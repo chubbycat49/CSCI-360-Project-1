@@ -10,10 +10,17 @@
 
 using namespace std;
 
-vector<Function> functions;
-string register_for_argument_32[6] = {edi, esi, edx, ecx, r8d, r9d};
+void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset);
+void IF_statement_handler(string source, int max_len, Function &f1, int &addr_offset);
+void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset);
+void return_handler(string source, Function &f1);
+void function_call_handler(string source, Function &f1);
 
-map variable_handler() {
+vector<Function> functions;
+string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
+string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+
+map<Variable,int> variable_handler() {
 }
 
 string add_mov_instruction(string src, string dest, int size) {
@@ -90,7 +97,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
         } else {
             // line is not function call or function end
             // send to common handler dispatcher
-            common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+            truction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
         }
     }
 
@@ -118,7 +125,7 @@ bool is_function_call(string line) {
 /*
     According to the instruction type, call the corresponding handler.
 */
-void common_instruction_handler_dispatcher(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset) {
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
@@ -178,31 +185,92 @@ vector<string> split(const string str, const string regex_str) {
 /*
     Handle variable declaration statements
 */
-void variable_offset_allocation(string *source, int &loc, Function &f1, int &addr_offset) {
+void variable_offset_allocation(string source, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle if statements
 */
-void IF_statement_handler(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void IF_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle for statements
 */
-void FOR_statement_handler(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle return statements
 */
-void return_handler(string *source, int &loc, Function &f1) {
+void return_handler(string source, Function &f1) {
 }
 
 /*
     Handle other function call statements
 */
-void function_call_handler(string *source, int &loc, Function &f1) {
+void function_call_handler(string input_str, Function &f1) {
+  bool assigned = false;
+  string regex_str = " ";
+  auto tokens = split(input_str, regex_str);
+  // Check if the line with the function call assigns the returned value
+  if (tokens[1] == "="){
+    assigned = true;
+  }
+
+  // Get string containing just function call
+  std::string callstr = "";
+  int i = 0;
+  for (auto c : tokens){
+      if (i < 2 && assigned){
+          i++;
+          continue;
+      }
+      callstr += c;
+  }
+
+  // Get name of function and parameter list
+  std::string name = callstr.substr(0, callstr.find("("));
+  std::string params = callstr.substr(callstr.find("(") + 1);
+  params.pop_back(); params.pop_back(); // Get rid of ");"
+
+  // Place first 6 parameters onto stack in reverse order
+  // Concern: pushing an array requires 'lea' instead of 'mov'
+  tokens = split(params, ",");
+
+  vector<string> paramsv;
+  for (auto p : tokens){
+    paramsv.push_back(p);
+  }
+
+  i = 0;
+  for (vector::iterator p = tokens.end(); p != tokens.start(); p--){
+    for (Variable a : f1.variables){
+      if (p == a.name){
+        i++;
+        if (i <= 6){
+          if (a.type == "int")
+            f1.assembly_instructions.push_back(add_mov_instruction
+              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[6-i], 32));
+          else
+            f1.assembly_instructions.push_back(add_mov_instruction
+              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_64[6-i], 64));
+        }
+        else{
+          // After the first 6 arguments are placed in registers, the rest are put on the stack
+          f1.assembly_instructions.push_back(add_mov_instruction(
+            to_string(a.addr_offset) + "(%rbp)", "%rdi", 64));
+          f1.assembly_instructions.push_back("pushq %rdi");
+        }
+      }
+    }
+  }
+
+  // Call function
+  f1.assembly_instructions.push_back("call " + name);
+
+  for (auto s : f1.assembly_instructions)
+    cout << s << endl;
 }
 
 /*
