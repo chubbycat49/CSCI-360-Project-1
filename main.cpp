@@ -1,23 +1,42 @@
-#include <Function.h>
-#include <Variable.h>
-
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <regex>
+#include <string>
 #include <vector>
+
+#include "Function.h"
+#include "Variable.h"
 
 using namespace std;
 
 vector<Function> functions;
+string register_for_argument_32[6] = {edi, esi, edx, ecx, r8d, r9d};
 
 map variable_handler() {
 }
 
-string add_mov_instruction() {
+string add_mov_instruction(string src, string dest, int size) {
+  string out;
+  switch(size){
+    case 8:
+      out = "movb ";
+      break;
+    case 16:
+      out = "movs ";
+      break;
+    case 32:
+      out = "movl ";
+      break;
+    case 64:
+      out = "movq ";
+      break;
+  }
+  out += (src + ", ");
+  return out + dest;
 }
 
 void function_handler(vector<string> source, int loc, int max_len) {
-
     // Create a function object, get function return type and function name
 
     Function f1;
@@ -28,7 +47,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
     f1.assembly_instructions.push_back(f1.function_name + ":");
     f1.assembly_instructions.push_back("pushq %rbp");
     f1.assembly_instructions.push_back("movq %rsp, %rbp");
-    f1.tion = true;
+    f1.is_leaf_function = true;
 
     // Get parameter list and read parameter values from registers
 
@@ -99,7 +118,7 @@ bool is_function_call(string line) {
 /*
     According to the instruction type, call the corresponding handler.
 */
-void common_instruction_handler_dispatcher(vector<string> *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void common_instruction_handler_dispatcher(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
@@ -149,40 +168,47 @@ void common_instruction_handler_dispatcher(vector<string> *source, int &loc, int
 }
 
 /*
+    Helper function which given a string and a deliminator, creates a iterator of the split tokens
+    Sourced from: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+*/
+vector<string> split(const string str, const string regex_str) {
+    return {sregex_token_iterator(str.begin(), str.end(), regex(regex_str), -1), sregex_token_iterator()};
+}
+
+/*
     Handle variable declaration statements
 */
-void variable_offset_allocation(vector<string> *source, int &loc, Function &f1, int &addr_offset) {
+void variable_offset_allocation(string *source, int &loc, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle if statements
 */
-void IF_statement_handler(vector<string> *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void IF_statement_handler(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle for statements
 */
-void FOR_statement_handler(vector<string> *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void FOR_statement_handler(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle return statements
 */
-void return_handler(vector<string> *source, int &loc, Function &f1) {
-
+void return_handler(string *source, int &loc, Function &f1) {
 }
 
 /*
     Handle other function call statements
 */
-void function_call_handler(vector<string> *source, int &loc, Function &f1) {
+void function_call_handler(string *source, int &loc, Function &f1) {
 }
 
 /*
     Handle arithemetic statements
 */
-void arithmetic_handler(vector<string> line, Function &f1) {
+void arithmetic_handler(string line, Function &f1) {
 }
 
 vector<string> loadFile(string filename, int &maxlen) {
@@ -210,7 +236,7 @@ vector<string> loadFile(string filename, int &maxlen) {
 
 int main() {
     int max_len = 0;
-    vector<string> source = loadFile("test1.cpp", max_len);
+    vector source = loadFile("test1.cpp", max_len);
 
     function_handler(source, 0, max_len);
 
