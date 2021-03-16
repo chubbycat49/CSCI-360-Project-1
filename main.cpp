@@ -18,6 +18,7 @@ string add_mov_instruction() {
 }
 
 void function_handler(vector<string> source, int loc, int max_len) {
+
     // Create a function object, get function return type and function name
 
     Function f1;
@@ -28,7 +29,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
     f1.assembly_instructions.push_back(f1.function_name + ":");
     f1.assembly_instructions.push_back("pushq %rbp");
     f1.assembly_instructions.push_back("movq %rsp, %rbp");
-    f1.is_leaf_function = true;
+    f1.tion = true;
 
     // Get parameter list and read parameter values from registers
 
@@ -98,7 +99,7 @@ bool is_function_call(string line) {
 /*
     According to the instruction type, call the corresponding handler.
 */
-void common_instruction_handler_dispatcher(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void common_instruction_handler_dispatcher(vector<string> *source, int &loc, int max_len, Function &f1, int &addr_offset) {
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
@@ -150,31 +151,32 @@ void common_instruction_handler_dispatcher(string *source, int &loc, int max_len
 /*
     Handle variable declaration statements
 */
-void variable_offset_allocation(string *source, int &loc, Function &f1, int &addr_offset) {
+void variable_offset_allocation(vector<string> *source, int &loc, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle if statements
 */
-void IF_statement_handler(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void IF_statement_handler(vector<string> *source, int &loc, int max_len, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle for statements
 */
-void FOR_statement_handler(string *source, int &loc, int max_len, Function &f1, int &addr_offset) {
+void FOR_statement_handler(vector<string> *source, int &loc, int max_len, Function &f1, int &addr_offset) {
 }
 
 /*
     Handle return statements
 */
-void return_handler(string *source, int &loc, Function &f1) {
+void return_handler(vector<string> *source, int &loc, Function &f1) {
+
 }
 
 /*
     Handle other function call statements
 */
-void function_call_handler(string *source, int &loc, Function &f1) {
+void function_call_handler(vector<string> *source, int &loc, Function &f1) {
 }
 
 /*
@@ -219,7 +221,7 @@ vector<string> loadFile(string filename, int &maxlen) {
 
 int main() {
     int max_len = 0;
-    vector source = loadFile("test1.cpp", max_len);
+    vector<string> source = loadFile("test1.cpp", max_len);
 
     function_handler(source, 0, max_len);
 
