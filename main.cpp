@@ -3,6 +3,7 @@
 
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <vector>
 
@@ -88,7 +89,6 @@ void function_handler(vector<string> source, int loc, int max_len) {
         function_handler(source, loc, max_len);
     }
 }
-
 /*
     Return if given code line is a function call
 */
@@ -181,6 +181,17 @@ void function_call_handler(string *source, int &loc, Function &f1) {
     Handle arithemetic statements
 */
 void arithmetic_handler(string line, Function &f1) {
+
+    string lineToParse = line;
+    vector<string> parsedLine;//[0] = a, [2] = b, [3] = + , [4] = c {a = b + c}
+
+    lineToParse.erase(lineToParse.length() - 1, lineToParse.length());// remove ";"
+
+    string word;
+    istringstream iss(lineToParse);
+    while(iss >> word){// split the string into a vector
+        parsedLine.push_back(word.c_str());
+    }
 }
 
 vector<string> loadFile(string filename, int &maxlen) {
