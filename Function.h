@@ -1,7 +1,11 @@
-#include <Variable.h>
+#ifndef FUNCTION_H
+#define FUNCTION_H
 
 #include <map>
+#include <string>
 #include <vector>
+
+#include "Variable.h"
 
 using namespace std;
 
@@ -15,3 +19,5 @@ class Function {
 
     bool is_leaf_function;
 };
+
+#endif
