@@ -16,13 +16,27 @@ void IF_statement_handler(string source, int max_len, Function &f1, int &addr_of
 void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset);
 void return_handler(string source, Function &f1);
 void function_call_handler(string source, Function &f1);
+void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset);
 
 vector<Function> functions;
 int label_number = 0;
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-map<Variable,int> variable_handler() {
+map<Variable,int> variable_handler(string input_str, int idk, int& addr_offset) {
+  map<Variable, int> out;
+  auto var_tokens = split(input_str, ",");
+  for (auto c : tokens){
+    auto tmp = split(c, " ");
+    string var_type = tmp[0];
+    string var_name = tmp[1];
+
+    Variable var (var_name, var_type, 0, addr_offset);
+    out.insert(pair<string, Variable> (var_name, var));
+    addr_offset -= 4;
+  }
+
+  return out;
 }
 
 string add_mov_instruction(string src, string dest, int size) {
