@@ -97,7 +97,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
         } else {
             // line is not function call or function end
             // send to common handler dispatcher
-            truction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+            common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
         }
     }
 
@@ -204,6 +204,23 @@ void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_o
     Handle return statements
 */
 void return_handler(string source, Function &f1) {
+  // If we return something then we have to move it to %eax
+  if (source[6] != ';'){
+    string rvalue = source.substr(7);
+    if(std::find(f1.variables.begin(), f1.variables.end(), rvalue) != f1.variables.end())
+    {
+      if (f1.variables[std::find(f1.variables.begin(), f1.variables.end(), rvalue)].type == "int")
+        f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 32));
+      else
+        f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 64));
+    }
+  }
+
+  // Leave isn't always the most optimal, but if we want to use just
+  // popq %rbp then we'll have to keep track of rbp and rsp in this
+  // program. We could do that, but leave is always safe anyway so it's fine.
+  f1.assembly_instructions.push_back("leave");
+  f1.assembly_instructions.push_back("ret");
 }
 
 /*
@@ -304,7 +321,7 @@ vector<string> loadFile(string filename, int &maxlen) {
 
 int main() {
     int max_len = 0;
-    vector source = loadFile("test1.cpp", max_len);
+    vector<string> source = loadFile("test1.cpp", max_len);
 
     function_handler(source, 0, max_len);
 
