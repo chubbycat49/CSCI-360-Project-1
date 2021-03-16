@@ -206,7 +206,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
             int arr_addr_offset = addr_offset - (i * 4);
 
             Variable var (name, var_type, val, addr_offset);
-            f1.variables.push_back(var);
+            f1.variables.insert(pair<string, Variable> (name, var));
             f1.assembly_instructions.push_back("movl $" + array_values[i] + ", " + to_string(arr_addr_offset) + "(%rbp)");
         }
         addr_offset -= (array_size * 4);
@@ -228,7 +228,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
             int var_value = stoi(var_tokens[2]);
 
             Variable var (var_name, var_type, var_value, addr_offset);
-            f1.variables.push_back(var);
+            f1.variables.insert(pair<string, Variable> (var_name, var));
             f1.assembly_instructions.push_back("movl $" + var_tokens[2] + ", " + to_string(addr_offset) + "(%rbp)");
             addr_offset -= 4;
         }

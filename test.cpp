@@ -70,7 +70,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
             int arr_addr_offset = addr_offset - (i * 4);
 
             Variable var (name, var_type, val, addr_offset);
-            f1.variables.push_back(var);
+            f1.variables.insert(pair<string, Variable> (name, var));
             f1.assembly_instructions.push_back("movl $" + array_values[i] + ", " + to_string(arr_addr_offset) + "(%rbp)");
         }
         addr_offset -= (array_size * 4);
@@ -92,7 +92,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
             int var_value = stoi(var_tokens[2]);
 
             Variable var (var_name, var_type, var_value, addr_offset);
-            f1.variables.push_back(var);
+            f1.variables.insert(pair<string, Variable> (var_name, var));
             f1.assembly_instructions.push_back("movl $" + var_tokens[2] + ", " + to_string(addr_offset) + "(%rbp)");
             addr_offset -= 4;
         }
@@ -109,9 +109,9 @@ void view_function(Function &f1) {
         cout << x << endl;
     }
 
-    // for (auto x: f1.variables) {
-    //     cout << x.type << " " << x.name << " " << x.value << " " << x.addr_offset << endl;
-    // }
+    for (auto const& x: f1.variables) {
+        cout << x.second.type << " " << x.first << " " << x.second.value << " " << x.second.addr_offset << endl;
+    }
 }
 
 int main() {
