@@ -14,7 +14,7 @@ class Function {
     string return_type;
     string function_name;
     vector<string> sourceCode;
-    vector<Variable> variables;
+    map<string, Variable> variables;
     vector<string> assembly_instructions;
 
     bool is_leaf_function;
