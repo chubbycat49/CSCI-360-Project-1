@@ -219,9 +219,9 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
         auto array_name = tokens[0];
         auto temp = split(array_name, "\\["); // [ needs to be escaped with \ and then that \ needs to be escaped for C++ complier
         array_name = temp[0];
-        
+
         int array_size = stoi(temp[1].substr(0, temp[1].size()-1));
-        
+
         auto array_values_str = tokens[1];
         auto array_values = split(array_values_str.substr(1, array_values_str.size()-2), ", "); // removes { and } and splits into int values
 
@@ -236,7 +236,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
         }
         addr_offset -= (array_size * 4);
     } else {
-        
+
         /*
             Split variables by , and then by space to parse the name and value
         */
@@ -324,7 +324,9 @@ void function_call_handler(string input_str, Function &f1) {
   params.pop_back(); params.pop_back(); // Get rid of ");"
 
   // Place first 6 parameters onto stack in reverse order
+  // The first parameter gets saved away in %eax so %rdi can be used to push
   // Concern: pushing an array requires 'lea' instead of 'mov'
+  // Solution: for
   tokens = split(params, ",");
 
   vector<string> paramsv;
@@ -332,18 +334,28 @@ void function_call_handler(string input_str, Function &f1) {
     paramsv.push_back(p);
   }
 
-  i = 0;
+  i = 6;
   for (vector::iterator p = tokens.end(); p != tokens.start(); p--){
     for (Variable a : f1.variables){
       if (p == a.name){
-        i++;
-        if (i <= 6){
+        i--;
+        if (i > 0){
           if (a.type == "int")
             f1.assembly_instructions.push_back(add_mov_instruction
-              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[6-i], 32));
+              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[i], 32));
           else
             f1.assembly_instructions.push_back(add_mov_instruction
-              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_64[6-i], 64));
+              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_64[i], 64));
+        }
+        else if (i == 0){ // We put the first param in %eax/%rax for now
+          if (a.type == "int"){
+            f1.assembly_instructions.push_back((to_string(a.addr_offset) + "(%rbp) ") + "%eax");
+            firstparam = "%eax";
+          }
+          else{
+            f1.assembly_instructions.push_back((to_string(a.addr_offset) + "(%rbp) ") + "%rax");
+            firstparam = "%rax";
+          }
         }
         else{
           // After the first 6 arguments are placed in registers, the rest are put on the stack
@@ -354,12 +366,16 @@ void function_call_handler(string input_str, Function &f1) {
       }
     }
   }
+  if (firstparam == "%eax")
+    f1.assembly_instructions.push_back("movl %eax, %edi");
+  else
+    f1.assembly_instructions.push_back("movl %rax, %rdi");
 
   // Call function
   f1.assembly_instructions.push_back("call " + name);
 
-  for (auto s : f1.assembly_instructions)
-    cout << s << endl;
+  // for (auto s : f1.assembly_instructions)
+  //   cout << s << endl;
 }
 
 /*
