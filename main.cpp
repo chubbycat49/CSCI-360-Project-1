@@ -18,6 +18,7 @@ void return_handler(string source, Function &f1);
 void function_call_handler(string source, Function &f1);
 
 vector<Function> functions;
+int label_number = 0;
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
@@ -165,11 +166,23 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         loc++;
     }
     /*
-        otherwise, code line is an arithmetic instruction
+        code line has +, -, *
+        
     */
-    else {
+   // check if theres +, -, *
+   // otherwise
+    else if (is_arithmetic_line(source[loc]){
         f1.assembly_instructions.push_back("#" + source[loc]);
         arithmetic_handler(source[loc], f1);
+        loc++;
+    }
+    /*
+        otherwise, code line is an assignment instruction
+    */
+    else {
+        // a = b
+        // i = test(a, b, c, d, e, f, g, h);
+        assignment_handler();
         loc++;
     }
 }
@@ -270,6 +283,37 @@ void IF_statement_handler(string source, int max_len, Function &f1, int &addr_of
     Handle for statements
 */
 void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
+    string loop_label = ".L" + to_string(label_number++);
+    string end_label = ".L" + to_string(label_number++);
+    
+    // for (int i =0; i < 5; i++)
+    // int i = 0;
+    // push loop label
+    // i < 5
+    // jump end_label
+    // i = i + 1
+
+    // loc++;  // go to next source code line
+    // bool next_function = false;
+    // while (loc < max_len) {
+    //     if ((source[loc].find("int") == 0 || source[loc].find("void") == 0) && source[loc].find("}") == source[loc].length() - 1) {
+    //         // start with a new function
+    //         next_function = true;
+    //         break;
+    //     } else if (source[loc] == "}") {
+    //         loc++;
+    //     } else {
+    //         // line is not function call or function end
+    //         // send to common handler dispatcher
+    //         common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+    //     }
+    // }
+
+    // finished the for loop, already hit the }
+    // unconditional jump back to loop_label  jmp     loop_label
+    // push end_label
+
+
 }
 
 /*
