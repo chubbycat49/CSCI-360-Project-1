@@ -167,7 +167,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     }
     /*
         code line has +, -, *
-        
+
     */
    // check if theres +, -, *
    // otherwise
@@ -285,7 +285,7 @@ void IF_statement_handler(string source, int max_len, Function &f1, int &addr_of
 void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
     string loop_label = ".L" + to_string(label_number++);
     string end_label = ".L" + to_string(label_number++);
-    
+
     // for (int i =0; i < 5; i++)
     // int i = 0;
     // push loop label
@@ -369,8 +369,7 @@ void function_call_handler(string input_str, Function &f1) {
 
   // Place first 6 parameters onto stack in reverse order
   // The first parameter gets saved away in %eax so %rdi can be used to push
-  // Concern: pushing an array requires 'lea' instead of 'mov'
-  // Solution: for
+
   tokens = split(params, ",");
 
   vector<string> paramsv;
@@ -381,6 +380,8 @@ void function_call_handler(string input_str, Function &f1) {
   i = 6;
   for (vector::iterator p = tokens.end(); p != tokens.start(); p--){
     for (Variable a : f1.variables){
+
+      /* If the argument is a non-array variable */
       if (p == a.name){
         i--;
         if (i > 0){
@@ -408,8 +409,39 @@ void function_call_handler(string input_str, Function &f1) {
           f1.assembly_instructions.push_back("pushq %rdi");
         }
       }
+
+      /* If the argument is an array variable */
+      else if (p + "[0]" == a.name){ // f1.variables contains p[0]
+        i--;
+        if (i > 0){
+            f1.assembly_instructions.push_back("leaq" + to_string(a.addr_offset) + "(%rbp)" + "%" + register_for_argument_64[i]);
+        }
+        else if (i == 0){ // We put the first param address in %rax for now
+            f1.assembly_instructions.push_back(("leaq " + (to_string(a.addr_offset) + "(%rbp) ")) + "%rax");
+            firstparam = "%rax";
+        }
+        else{
+          // After the first 6 arguments are placed in registers, the rest are put on the stack
+          f1.assembly_instructions.push_back("leaq" + to_string(a.addr_offset) + "(%rbp)" + "%rdi");
+          f1.assembly_instructions.push_back("pushq %rdi");
+        }
+      }
+
+      /* If the argument is not a variable but a literal (only works for ints) */
+      else {
+        if (i > 0)
+          f1.assembly_instructions.push_back("movl $" + p + ", %" + register_for_argument_32[i]);
+        else if (i == 0){
+          f1.assembly_instructions.push_back("movl $" + p + ", %eax";
+          firstparam = "%eax";
+        }
+        else
+          f1.assembly_instructions.push_back("pushq $" + p);
+      }
     }
   }
+
+  // Put the first parameter back into %edi or %rdi
   if (firstparam == "%eax")
     f1.assembly_instructions.push_back("movl %eax, %edi");
   else
@@ -417,9 +449,6 @@ void function_call_handler(string input_str, Function &f1) {
 
   // Call function
   f1.assembly_instructions.push_back("call " + name);
-
-  // for (auto s : f1.assembly_instructions)
-  //   cout << s << endl;
 }
 
 /*
