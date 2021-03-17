@@ -421,6 +421,14 @@ void arithmetic_handler(string line, Function &f1) {
     while(iss >> word){// split the string into a vector
         parsedLine.push_back(word.c_str());
     }
+
+ if(isdigit(parsedLine[2].at(0)) && isdigit(parsedLine[4].at(0))){
+        int c3 = stoi(parsedLine[2]) + stoi(parsedLine[4]);// add both consts
+        auto itr = f1.variables.find(parsedLine[0]);
+        string insStr = "movl $" + to_string(c3) + ", " + to_string(itr->second.addr_offset) + "(%rbp)";
+        f1.assembly_instructions.push_back(insStr);
+    }
+    
 }
 
 vector<string> loadFile(string filename, int &maxlen) {
