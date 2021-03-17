@@ -422,7 +422,7 @@ void arithmetic_handler(string line, Function &f1) {
         parsedLine.push_back(word.c_str());
     }
 
- if(isdigit(parsedLine[2].at(0)) && isdigit(parsedLine[4].at(0))){
+    if(isdigit(parsedLine[2].at(0)) && isdigit(parsedLine[4].at(0))){// addind 2 consts
         int c3 = stoi(parsedLine[2]) + stoi(parsedLine[4]);// add both consts
         auto itr = f1.variables.find(parsedLine[0]);
         string insStr = "movl $" + to_string(c3) + ", " + to_string(itr->second.addr_offset) + "(%rbp)";

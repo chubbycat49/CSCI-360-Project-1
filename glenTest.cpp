@@ -24,21 +24,37 @@ void arithmetic_handler(string line, Function &f1) {
     //itr->second.value = 99;
     //cout << itr->second.value << endl;
 
-    if(isdigit(parsedLine[2].at(0)) && isdigit(parsedLine[4].at(0))){
-        int c3 = stoi(parsedLine[2]) + stoi(parsedLine[4]);//add both consts
-        auto itr = f1.variables.find(parsedLine[0]);
-        string insStr = "movl $" + to_string(c3) + ", " + to_string(itr->second.addr_offset) + "(%rbp)";
-        f1.assembly_instructions.push_back(insStr);
-    } 
+    if(parsedLine[3] == "+"){
+        if(isdigit(parsedLine[2].at(0)) && isdigit(parsedLine[4].at(0))){//const + const
+            int c3 = stoi(parsedLine[2]) + stoi(parsedLine[4]);//add both consts
+            auto itr = f1.variables.find(parsedLine[0]);
+            string insStr = "movl $" + to_string(c3) + ", " + to_string(itr->second.addr_offset) + "(%rbp)";
+            f1.assembly_instructions.push_back(insStr);
+        }else if(!isdigit(parsedLine[2].at(0)) && isdigit(parsedLine[4].at(0))){// var + const
+            auto itr = f1.variables.find(parsedLine[0]);//c3 var
+            auto itr2 = f1.variables.find(parsedLine[2]);//c1 var
+            int c3 = itr2->second.value + stoi(parsedLine[4]);
+            string insStr = "movl " + to_string(itr2->second.addr_offset) + "(%rbp), %eax";
+            f1.assembly_instructions.push_back(insStr);
+            insStr = "addl $" + parsedLine[4] + ", %eax";
+            f1.assembly_instructions.push_back(insStr);
+            insStr = "movl %eax "+ to_string(itr->second.addr_offset) + "(%rbp)";
+            f1.assembly_instructions.push_back(insStr);
+        }else if(isdigit(parsedLine[2].at(0)) && !isdigit(parsedLine[4].at(0))){//const + var
+            auto itr = f1.variables.find(parsedLine[0]);//c3 var
+            auto itr2 = f1.variables.find(parsedLine[4]);//c2 var
+        }
+
+    }
 
 }
 
 int main(){
-    string ln = "a = 3 + 33;";
+    string ln = "c = b + 33;";
 
     Variable var("a", "int", 12, -4);
     Variable var2("b", "int", 120, -8);
-    Variable var3("a", "int", 12, -12);
+    Variable var3("c", "int", 12, -12);
     Function f1;
     f1.function_name = "main";
     f1.variables.insert({var.name, var});
