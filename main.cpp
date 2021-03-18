@@ -243,7 +243,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
             string name = array_name + "[" + to_string(i) + "]";
             int arr_addr_offset = addr_offset - (i * 4);
 
-            Variable var (name, var_type, val, addr_offset);
+            Variable var (name, var_type, val, arr_addr_offset);
             f1.variables.insert(pair<string, Variable> (name, var));
             f1.assembly_instructions.push_back("movl $" + array_values[i] + ", " + to_string(arr_addr_offset) + "(%rbp)");
         }
