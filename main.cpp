@@ -182,8 +182,8 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     else {
         // a = b
         // i = test(a, b, c, d, e, f, g, h);
-        assignment_handler();
-        loc++;
+        // assignment_handler();
+        // loc++;
     }
 }
 
@@ -276,7 +276,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
 /*
     Handle if statements
 */
-void IF_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
+void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset) {
 }
 
 /*

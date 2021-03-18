@@ -13,6 +13,33 @@
 
 using namespace std;
 
+void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset);
+void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset) ;
+void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset);
+
+vector<string> split(const string str, const string regex_str);
+static inline void trim(string &s);
+
+/*
+    According to the instruction type, call the corresponding handler.
+*/
+void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset) {
+    /*
+        code line starts with variable declaration keyword "int" and ends with semicolon
+    */
+    if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1) {
+        variable_offset_allocation(source, loc, f1, addr_offset);
+        loc++;
+    }
+    /*
+        code line starts with "if"
+    */
+    else if (source[loc].find("if") == 0) {
+        f1.assembly_instructions.push_back("#" + source[loc]);
+        IF_statement_handler(source, loc, max_len, f1, addr_offset);
+    }
+}
+
 /*
     Helper function which given a string and a deliminator, creates a iterator of the split tokens
     Sourced from: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
@@ -99,6 +126,13 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
     }
 }
 
+/*
+    Handle if statements
+*/
+void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset) {
+    int a = 1;
+}
+
 void intialize_function(Function &f1) {
     f1.return_type = "int";
     f1.function_name = "test";
@@ -114,22 +148,40 @@ void view_function(Function &f1) {
     }
 }
 
-int main() {
-    string str1 = "int a = 1, b = 2, c = 3, d = 4;";
-    string str2 = "int e[3] = {5, 6, 7};";
-    string str3 = "int f = 8, g = 9;";
+vector<string> loadFile(string filename, int &maxlen) {
+    ifstream inputFile;
+    inputFile.open(filename);
+    string inputLine;
 
-    vector<string> sources;
-    sources.push_back(str1);
-    sources.push_back(str2);
-    sources.push_back(str3);
+    if (inputFile.fail()) {
+        cout << "Failed to open file." << endl;
+    } else {
+        cout << "Opening file successful" << endl;
+    }
+
+    vector<string> sourceCode;
+    while (!inputFile.eof()) {
+        getline(inputFile, inputLine);
+        sourceCode.push_back(inputLine);
+        maxlen++;
+    }
+
+    inputFile.close();
+
+    return sourceCode;
+}
+
+int main() {
+    int max_len = 0;
+    vector<string> sources = loadFile("kuntest1.cpp", max_len);;
     int loc = 0;
     Function f1;
     intialize_function(f1);
     int addr_offset = -4;
 
-    for (int i = 0; i < sources.size(); ++i) {
-        variable_offset_allocation(sources, i, f1, addr_offset);
+    while (loc < max_len){
+        common_instruction_handler_dispatcher(sources, loc, max_len, f1, addr_offset);
     }
+    
     view_function(f1);
 }
