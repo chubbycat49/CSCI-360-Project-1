@@ -1,24 +1,13 @@
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <map>
-#include <regex>
-#include <string>
-#include <vector>
-
+#include "main.h"
 #include "Function.h"
 #include "Variable.h"
+#include "util.h"
 
 using namespace std;
 
-void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset);
-void IF_statement_handler(string source, int max_len, Function &f1, int &addr_offset);
-void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset);
-void return_handler(string source, Function &f1);
-void function_call_handler(string source, Function &f1);
-
 vector<Function> functions;
-int label_number = 0;
+int label_number = 2;
+
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
@@ -43,6 +32,12 @@ string add_mov_instruction(string src, string dest, int size) {
   }
   out += (src + ", ");
   return out + dest;
+}
+
+/*
+    Return if given code line is a function call
+*/
+bool is_function_call(string line) {
 }
 
 void function_handler(vector<string> source, int loc, int max_len) {
@@ -117,11 +112,6 @@ void function_handler(vector<string> source, int loc, int max_len) {
         function_handler(source, loc, max_len);
     }
 }
-/*
-    Return if given code line is a function call
-*/
-bool is_function_call(string line) {
-}
 
 /*
     According to the instruction type, call the corresponding handler.
@@ -184,32 +174,6 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         // i = test(a, b, c, d, e, f, g, h);
         // assignment_handler();
         // loc++;
-    }
-}
-
-/*
-    Helper function which given a string and a deliminator, creates a iterator of the split tokens
-    Sourced from: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
-*/
-vector<string> split(const string str, const string regex_str) {
-    return {sregex_token_iterator(str.begin(), str.end(), regex(regex_str), -1), sregex_token_iterator()};
-}
-
-// trim from both ends (in place)
-static inline void trim(string &s) {
-    // trim from start
-    s.erase(s.begin(), find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !isspace(ch);
-    }));
-
-    // trim from end
-    s.erase(find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !isspace(ch);
-    }).base(), s.end());
-
-    // remove trailing semicolon in last element
-    if (s.find(";") == s.length() - 1) {
-        s.pop_back();
     }
 }
 
@@ -421,29 +385,6 @@ void arithmetic_handler(string line, Function &f1) {
     while(iss >> word){// split the string into a vector
         parsedLine.push_back(word.c_str());
     }
-}
-
-vector<string> loadFile(string filename, int &maxlen) {
-    ifstream inputFile;
-    inputFile.open(filename);
-    string inputLine;
-
-    if (inputFile.fail()) {
-        cout << "Failed to open file." << endl;
-    } else {
-        cout << "Opening file successful" << endl;
-    }
-
-    vector<string> sourceCode;
-    while (!inputFile.eof()) {
-        getline(inputFile, inputLine);
-        sourceCode.push_back(inputLine);
-        maxlen++;
-    }
-
-    inputFile.close();
-
-    return sourceCode;
 }
 
 int main() {
