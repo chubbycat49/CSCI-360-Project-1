@@ -10,15 +10,39 @@ string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 map<string,Variable> variable_handler(string input_str, int idk, int& addr_offset) {
   map<string,Variable> out;
-  auto var_tokens = split(input_str, ",");
+  auto var_tokens = split(input_str, ", ");
   for (auto c : var_tokens){
-    auto tmp = split(c, " ");
-    string var_type = tmp[0];
-    string var_name = tmp[1];
+    if (is_array_accessor(c))
+    {
+        /*
+            Split line by = and then by the [] to parse the name, size and values
+        */
+        c = split(c, " ")[1];
 
-    Variable var (var_name, var_type, 0, addr_offset);
-    out.insert(pair<string, Variable> (var_name, var));
-    addr_offset -= 4;
+        auto temp = split(c, "\\["); // [ needs to be escaped with \ and then that \ needs to be escaped for C++ complier
+        string array_name = temp[0];
+
+        int array_size = stoi(temp[1].substr(0, temp[1].size() - 1));
+
+        for (int i = array_size - 1; i >= 0; --i)
+        {
+            string name = array_name + "[" + to_string(i) + "]";
+            int arr_addr_offset = addr_offset - (i * 4);
+
+            Variable var(name, "int", 0, arr_addr_offset);
+            out.insert(pair<string, Variable>(name, var));
+        }
+        addr_offset -= (array_size * 4);
+    }
+    else{
+      auto tmp = split(c, " ");
+      string var_type = tmp[0];
+      string var_name = tmp[1];
+
+      Variable var (var_name, var_type, 0, addr_offset);
+      out.insert(pair<string, Variable> (var_name, var));
+      addr_offset -= 4;
+    }
   }
 
   return out;
@@ -321,6 +345,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
     int addr_offset = -4;
     tempstr = tempstr.substr(tempstr.find('(') + 1, tempstr.length() - f1.function_name.length() - 3);
     string parameter_str = tempstr.substr(tempstr.find('(') + 1, tempstr.find('('));
+    parameter_str.pop_back();
     if (parameter_str.length() > 0) {
         f1.variables = variable_handler(parameter_str, 2, addr_offset);
         int number_of_parameter = 0;
@@ -384,6 +409,8 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
+    cout << endl << source[loc] << endl;
+
     if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1) {
         variable_offset_allocation(source, loc, f1, addr_offset);
         loc++;
@@ -524,7 +551,7 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
     Handle for statements
 */
 void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset) {
-    
+
 }
 
 /*
@@ -537,9 +564,14 @@ void return_handler(string source, Function &f1) {
 
   if (source[6] != ';'){
     string rvalue = source.substr(7);
-    if(f1.variables.count(rvalue) > 0)
+
+    // for (auto c : f1.variables)
+    //   cout << c.second.name << endl;
+    // cout << "rval: " << rvalue;
+    // if(f1.variables.count(rvalue) > 0)
+    
     {
-      if (f1.variables.at(rvalue).type == "int")
+      if (f1.variables[rvalue].type == "int")
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 32));
       else
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 64));
