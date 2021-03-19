@@ -374,7 +374,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
     loc++;  // go to next source code line
     bool next_function = false;
     while (loc < max_len) {
-        if ((source[loc].find("int") == 0 || source[loc].find("void") == 0) && source[loc].find("}") == source[loc].length() - 1) {
+        if ((source[loc].find("int") == 0 || source[loc].find("void") == 0) && source[loc].find("{") == source[loc].length() - 1) {
             // start with a new function
             next_function = true;
             break;
@@ -455,11 +455,17 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         loc++;
     }
     /*
-        otherwise, code line is an assignment instruction
+        code line is an assignment instruction
     */
-    else {
+    else if (is_substr(source[loc], "=")){
         f1.assembly_instructions.push_back("#" + source[loc]);
         assignment_handler(source[loc], f1);
+        loc++;
+    }
+    /*
+        otherwise, line is blank
+    */
+    else {
         loc++;
     }
 }
@@ -564,14 +570,15 @@ void return_handler(string source, Function &f1) {
 
   if (source[6] != ';'){
     string rvalue = source.substr(7);
+    rvalue.pop_back();
 
     // for (auto c : f1.variables)
-    //   cout << c.second.name << endl;
+    //   cout << c.first << " ";
     // cout << "rval: " << rvalue;
-    // if(f1.variables.count(rvalue) > 0)
-    
+
+    if(f1.variables.count(rvalue) > 0)
     {
-      if (f1.variables[rvalue].type == "int")
+      if (f1.variables.at(rvalue).type == "int")
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 32));
       else
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 64));
