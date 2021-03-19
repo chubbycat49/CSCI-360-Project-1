@@ -8,13 +8,16 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
 void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset);
 void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset);
 void arithmetic_handler(string &s, Function &f1);
+void assignment_handler(string &s, Function &f1);
 
 void move_immediate_val_into_register(const string s, const string reg, Function &f1);
 void move_var_val_into_register(const string s, const string reg, Function &f1);
 void move_arr_val_into_register(const string s, const string reg, Function &f1);
+void store_immedaite_val(const string dest, const string val, Function &f1);
 void store_reg_val(const string dest, const string reg, Function &f1);
 void comparison_handler(string &s, Function &f1, int &loc);
 bool is_arithmetic_line(const string s);
+bool is_function_call(string line);
 
 int label_num = 2;
 
@@ -67,6 +70,39 @@ void move_arr_val_into_register(const string s, const string reg, Function &f1)
     }
 }
 
+/*
+    Helper function to move immediate value into a specified destionation
+    Pushes required assembly instrucitons to move immediate value into specified destination
+*/
+void store_immedaite_val(const string dest, const string val, Function &f1)
+{
+    if (is_array_accessor_dynamic(dest))
+    {
+        /*
+            storing in array via variable
+        */
+        string arr_name = dest.substr(0, dest.find("["));
+        string arr_index = substr_between_indices(dest, dest.find("[") + 1, dest.find("]"));
+
+        f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(arr_index).addr_offset) + "(%rbp), %eax");
+        f1.assembly_instructions.push_back("cltq");
+        // get where arr_name[0] is
+        string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
+        f1.assembly_instructions.push_back("movl $" + val + ", " + arr_start_offset + "(%rbp, %rax, 4)");
+    }
+    else
+    {
+        /*
+            storing in variable or static array (a[0])
+        */
+        f1.assembly_instructions.push_back("movl $" + val + ", " + to_string(f1.variables.at(dest).addr_offset) + "(%rbp)");
+    }
+}
+
+/*
+    Helper function to move register value into a specified destionation
+    Pushes required assembly instrucitons to move register value into specified destination
+*/
 void store_reg_val(const string dest, const string reg, Function &f1)
 {
     if (is_array_accessor_dynamic(dest))
@@ -235,6 +271,13 @@ bool is_arithmetic_line(const string s)
 }
 
 /*
+    Return if given code line is a function call
+*/
+bool is_function_call(string line) {
+    return false;
+}
+
+/*
     According to the instruction type, call the corresponding handler.
 */
 void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset)
@@ -266,6 +309,8 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     }
     else
     {
+        f1.assembly_instructions.push_back("#" + source[loc]);
+        assignment_handler(source[loc], f1);
         loc++;
     }
 }
@@ -635,6 +680,28 @@ void arithmetic_handler(string &s, Function &f1)
 */
 void assignment_handler(string &s, Function &f1)
 {
+    auto tokens = split(s, " = ");
+    trim_vector(tokens);
+    remove_ending_semicolon_vector(tokens);
+    string dest = tokens[0];
+    string src = tokens[1];
+
+    if (is_function_call(src)) {
+        // a = test(...);
+
+    } else if (is_int(src)) {
+        // a = 0;
+        store_immedaite_val(dest, src, f1);
+    } else if (is_array_accessor(src)){
+        // a = c[1], a = c[x]
+        move_arr_val_into_register(src, "%eax", f1);
+        store_reg_val(dest, "%eax", f1);
+    } else {
+        // a = c
+        move_var_val_into_register(src, "%eax", f1);
+        store_reg_val(dest, "%eax", f1);
+    }
+
 }
 
 void intialize_function(Function &f1)
