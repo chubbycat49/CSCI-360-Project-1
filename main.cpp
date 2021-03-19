@@ -41,6 +41,32 @@ bool is_function_call(string line) {
 }
 
 /*
+    Returns if +,-,* are in the string, aka code has arithmetic instructions
+*/
+bool is_arithmetic_line(const string s)
+{
+    return is_substr(s, "+") || is_substr(s, "-") || is_substr(s, "*");
+}
+
+/*
+    Helper function to move immediate values into registers
+    Pushes required assembly instructions
+*/
+void move_immediate_val_into_register(const string s, const string reg, Function &f1)
+{
+    f1.assembly_instructions.push_back("movl $" + s + ", " + reg);
+}
+
+/*
+    Helper function to move variable values into registers
+    Pushes required assembly instructions
+*/
+void move_var_val_into_register(const string s, const string reg, Function &f1)
+{
+    f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(s).addr_offset) + "(%rbp), " + reg);
+}
+
+/*
     Helper function to handle code like a[0] and a[f] which accesses array elements
     Pushes required assembly instructions to get that value into specified register
 */
@@ -68,6 +94,64 @@ void move_arr_val_into_register(const string s, const string reg, Function &f1)
         // get where arr_name[0] is
         string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
         f1.assembly_instructions.push_back("movl " + arr_start_offset + "(%rbp, %rax, 4), " + reg);
+    }
+}
+
+/*
+    Helper function to move immediate value into a specified destionation
+    Pushes required assembly instrucitons to move immediate value into specified destination
+*/
+void store_immedaite_val(const string dest, const string val, Function &f1)
+{
+    if (is_array_accessor_dynamic(dest))
+    {
+        /*
+            storing in array via variable
+        */
+        string arr_name = dest.substr(0, dest.find("["));
+        string arr_index = substr_between_indices(dest, dest.find("[") + 1, dest.find("]"));
+
+        f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(arr_index).addr_offset) + "(%rbp), %eax");
+        f1.assembly_instructions.push_back("cltq");
+        // get where arr_name[0] is
+        string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
+        f1.assembly_instructions.push_back("movl $" + val + ", " + arr_start_offset + "(%rbp, %rax, 4)");
+    }
+    else
+    {
+        /*
+            storing in variable or static array (a[0])
+        */
+        f1.assembly_instructions.push_back("movl $" + val + ", " + to_string(f1.variables.at(dest).addr_offset) + "(%rbp)");
+    }
+}
+
+/*
+    Helper function to move register value into a specified destionation
+    Pushes required assembly instrucitons to move register value into specified destination
+*/
+void store_reg_val(const string dest, const string reg, Function &f1)
+{
+    if (is_array_accessor_dynamic(dest))
+    {
+        /*
+            storing in array via variable
+        */
+        string arr_name = dest.substr(0, dest.find("["));
+        string arr_index = substr_between_indices(dest, dest.find("[") + 1, dest.find("]"));
+
+        f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(arr_index).addr_offset) + "(%rbp), %eax");
+        f1.assembly_instructions.push_back("cltq");
+        // get where arr_name[0] is
+        string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
+        f1.assembly_instructions.push_back("movl " + reg + ", " + arr_start_offset + "(%rbp, %rax, 4)");
+    }
+    else
+    {
+        /*
+            storing in variable or static array (a[0])
+        */
+        f1.assembly_instructions.push_back("movl " + reg + ", " + to_string(f1.variables.at(dest).addr_offset) + "(%rbp)");
     }
 }
 
@@ -550,19 +634,313 @@ void function_call_handler(string input_str, Function &f1) {
 }
 
 /*
-    Handle arithemetic statements
+    Handle arithmetic statements
 */
-void arithmetic_handler(string line, Function &f1) {
+void arithmetic_handler(string &s, Function &f1)
+{
+    auto tokens = split(s, " = ");
+    trim_vector(tokens);
+    remove_ending_semicolon_vector(tokens);
+    string dest = tokens[0];
+    string arithmetic_str = tokens[1];
 
-    string lineToParse = line;
-    vector<string> parsedLine;//[0] = a, [2] = b, [3] = + , [4] = c {a = b + c}
+    auto arithmetic_tokens = split(arithmetic_str, " ");
+    trim_vector(arithmetic_tokens);
+    string l_val = arithmetic_tokens[0];
+    string op = arithmetic_tokens[1];
+    string r_val = arithmetic_tokens[2];
 
-    lineToParse.erase(lineToParse.length() - 1, lineToParse.length());// remove ";"
+    if (op == "+")
+    {
+        if (is_array_accessor(l_val) || is_array_accessor(r_val))
+        {
+            if (is_array_accessor(l_val) && is_array_accessor(r_val))
+            {
+                // arr arr
+                move_arr_val_into_register(l_val, "%edx", f1);
+                move_arr_val_into_register(r_val, "%eax", f1);
 
-    string word;
-    istringstream iss(lineToParse);
-    while(iss >> word){// split the string into a vector
-        parsedLine.push_back(word.c_str());
+                f1.assembly_instructions.push_back("addl %edx, %eax");
+            }
+            else if (is_array_accessor(l_val))
+            {
+                if (is_int(r_val))
+                {
+                    // arr num
+                    move_arr_val_into_register(l_val, "%eax", f1);
+
+                    r_val = "$" + r_val;
+                }
+                else
+                {
+                    // arr var
+                    move_arr_val_into_register(l_val, "%edx", f1);
+                    move_var_val_into_register(r_val, "%eax", f1);
+
+                    r_val = "%edx";
+                }
+
+                f1.assembly_instructions.push_back("addl " + r_val + ", %eax");
+            }
+            else if (is_array_accessor(r_val))
+            {
+                if (is_int(l_val))
+                {
+                    // num arr
+                    move_arr_val_into_register(r_val, "%eax", f1);
+
+                    r_val = "$" + r_val;
+                }
+                else
+                {
+                    // var arr
+                    move_arr_val_into_register(r_val, "%edx", f1);
+                    move_var_val_into_register(l_val, "%eax", f1);
+
+                    r_val = "%edx";
+                }
+
+                f1.assembly_instructions.push_back("addl " + r_val + ", %eax");
+            }
+        }
+        else if (is_int(l_val) || is_int(r_val))
+        {
+            if (is_int(l_val) && is_int(r_val))
+            {
+                /*
+                    Doesn't handle case of when both are immediates
+                */
+            }
+            else if (is_int(l_val))
+            {
+                // num + var
+                move_var_val_into_register(r_val, "%eax", f1);
+
+                f1.assembly_instructions.push_back("addl $" + l_val + ", %eax");
+            }
+            else if (is_int(r_val))
+            {
+                // var + num
+                move_var_val_into_register(l_val, "%eax", f1);
+
+                f1.assembly_instructions.push_back("addl $" + r_val + ", %eax");
+            }
+        }
+        else
+        {
+            // both operands are varaiables(non-arrays)
+            move_var_val_into_register(l_val, "%edx", f1);
+            move_var_val_into_register(r_val, "%eax", f1);
+
+            f1.assembly_instructions.push_back("addl %edx, %eax");
+        }
+    }
+    else if (op == "-")
+    {
+        if (is_array_accessor(l_val) || is_array_accessor(r_val))
+        {
+            if (is_array_accessor(l_val) && is_array_accessor(r_val))
+            {
+                // arr arr
+                move_arr_val_into_register(l_val, "%eax", f1);
+                move_arr_val_into_register(r_val, "%edx", f1);
+
+                f1.assembly_instructions.push_back("subl %edx, %eax");
+            }
+            else if (is_array_accessor(l_val))
+            {
+                if (is_int(r_val))
+                {
+                    // arr num
+                    move_arr_val_into_register(l_val, "%eax", f1);
+
+                    r_val = "$" + r_val;
+                }
+                else
+                {
+                    // arr var
+                    move_arr_val_into_register(l_val, "%eax", f1);
+
+                    r_val = to_string(f1.variables.at(r_val).addr_offset) + "(%rbp)";
+                }
+
+                f1.assembly_instructions.push_back("subl " + r_val + ", %eax");
+            }
+            else if (is_array_accessor(r_val))
+            {
+                if (is_int(l_val))
+                {
+                    // num arr
+                    move_arr_val_into_register(r_val, "%edx", f1);
+                    move_immediate_val_into_register(l_val, "%eax", f1);
+                }
+                else
+                {
+                    // var arr
+                    move_arr_val_into_register(r_val, "%edx", f1);
+                    move_var_val_into_register(l_val, "%eax", f1);
+                }
+
+                f1.assembly_instructions.push_back("subl %edx, %eax");
+            }
+        }
+        else if (is_int(l_val) || is_int(r_val))
+        {
+            if (is_int(l_val) && is_int(r_val))
+            {
+                /*
+                    Doesn't handle case of when both are immediates
+                */
+            }
+            else if (is_int(l_val))
+            {
+                // num - var
+                move_immediate_val_into_register(l_val, "%eax", f1);
+
+                f1.assembly_instructions.push_back("subl " + to_string(f1.variables.at(r_val).addr_offset) + "(%rbp), %eax");
+            }
+            else if (is_int(r_val))
+            {
+                // var - num
+                move_var_val_into_register(l_val, "%eax", f1);
+
+                f1.assembly_instructions.push_back("subl $" + r_val + ", %eax");
+            }
+        }
+        else
+        {
+            // both operands are varaiables(non-arrays)
+            move_var_val_into_register(l_val, "%eax", f1);
+
+            f1.assembly_instructions.push_back("subl " + to_string(f1.variables.at(r_val).addr_offset) + "(%rbp), %eax");
+        }
+    }
+    else if (op == "*")
+    {
+        if (is_array_accessor(l_val) || is_array_accessor(r_val))
+        {
+            if (is_array_accessor(l_val) && is_array_accessor(r_val))
+            {
+                // arr arr
+                move_arr_val_into_register(l_val, "%eax", f1);
+                move_arr_val_into_register(r_val, "%edx", f1);
+
+                f1.assembly_instructions.push_back("imull %edx, %eax");
+            }
+            else if (is_array_accessor(l_val))
+            {
+                if (is_int(r_val))
+                {
+                    // arr num
+                    move_arr_val_into_register(l_val, "%eax", f1);
+
+                    f1.assembly_instructions.push_back("imull $" + r_val + ", %eax");
+                }
+                else
+                {
+                    // arr var
+                    move_arr_val_into_register(l_val, "%eax", f1);
+                    move_var_val_into_register(r_val, "%edx", f1);
+
+                    f1.assembly_instructions.push_back("imull %edx, %eax");
+                }
+            }
+            else if (is_array_accessor(r_val))
+            {
+                if (is_int(l_val))
+                {
+                    // num arr
+                    move_arr_val_into_register(r_val, "%eax", f1);
+
+                    f1.assembly_instructions.push_back("imull $" + l_val + ", %eax");
+                }
+                else
+                {
+                    // var arr
+                    move_arr_val_into_register(r_val, "%eax", f1);
+                    move_var_val_into_register(l_val, "%edx", f1);
+
+                    f1.assembly_instructions.push_back("imull %edx, %eax");
+                }
+            }
+        }
+        else if (is_int(l_val) || is_int(r_val))
+        {
+            if (is_int(l_val) && is_int(r_val))
+            {
+                /*
+                    Doesn't handle case of when both are immediates
+                */
+            }
+            else if (is_int(l_val))
+            {
+                // num - var
+                move_var_val_into_register(r_val, "%eax", f1);
+
+                f1.assembly_instructions.push_back("imull $" + l_val + ", %eax");
+            }
+            else if (is_int(r_val))
+            {
+                // var - num
+                move_var_val_into_register(l_val, "%eax", f1);
+
+                f1.assembly_instructions.push_back("imull $" + r_val + ", %eax");
+            }
+        }
+        else
+        {
+            // both operands are varaiables(non-arrays)
+            move_var_val_into_register(l_val, "%eax", f1);
+
+            f1.assembly_instructions.push_back("imull " + to_string(f1.variables.at(r_val).addr_offset) + "(%rbp), %eax");
+        }
+    }
+
+    string reg;
+    if (is_array_accessor(dest))
+    {
+        // add move to edx line
+        f1.assembly_instructions.push_back("movl %eax, %edx");
+        reg = "%edx";
+    }
+    else
+    {
+        reg = "%eax";
+    }
+    store_reg_val(dest, reg, f1);
+}
+
+/*
+    Handles assignment statements
+*/
+void assignment_handler(string &s, Function &f1)
+{
+    auto tokens = split(s, " = ");
+    trim_vector(tokens);
+    remove_ending_semicolon_vector(tokens);
+    string dest = tokens[0];
+    string src = tokens[1];
+
+    if (is_function_call(src))
+    {
+        // a = test(...);
+    }
+    else if (is_int(src))
+    {
+        // a = 0;
+        store_immedaite_val(dest, src, f1);
+    }
+    else if (is_array_accessor(src))
+    {
+        // a = c[1], a = c[x]
+        move_arr_val_into_register(src, "%eax", f1);
+        store_reg_val(dest, "%eax", f1);
+    }
+    else
+    {
+        // a = c
+        move_var_val_into_register(src, "%eax", f1);
+        store_reg_val(dest, "%eax", f1);
     }
 }
 
