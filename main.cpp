@@ -11,7 +11,20 @@ int label_num = 2;
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-map<Variable,int> variable_handler() {
+map<Variable,int> variable_handler(string input_str, int idk, int& addr_offset) {
+  map<Variable, int> out;
+  auto var_tokens = split(input_str, ",");
+  for (auto c : tokens){
+    auto tmp = split(c, " ");
+    string var_type = tmp[0];
+    string var_name = tmp[1];
+
+    Variable var (var_name, var_type, 0, addr_offset);
+    out.insert(pair<string, Variable> (var_name, var));
+    addr_offset -= 4;
+  }
+
+  return out;
 }
 
 string add_mov_instruction(string src, string dest, int size) {
@@ -36,8 +49,12 @@ string add_mov_instruction(string src, string dest, int size) {
 
 /*
     Return if given code line is a function call
+    Examples:
+    i = test(a, b, c, d, e, f, g, h);
+    test(a, b, c, d, e, f, g, h);
 */
 bool is_function_call(string line) {
+  return (is_substr(line,"(") && !is_substr(line,"+") && !is_substr(line,"-") && !is_substr(line,"*"));
 }
 
 /*
@@ -417,9 +434,9 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     */
     else {
         // a = b
-        // i = test(a, b, c, d, e, f, g, h);
-        // assignment_handler();
-        // loc++;
+        f1.assembly_instructions.push_back("#" + source[loc]);
+        assignment_handler();
+        loc++;
     }
 }
 
@@ -509,10 +526,17 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
 /*
     Handle for statements
 */
+<<<<<<< HEAD
 void FOR_statement_handler(vector<string> &source, int max_len, Function &f1, int &addr_offset) {
     string loop_label = ".L" + to_string(label_num++);
     string end_label = ".L" + to_string(label_num++);
     
+=======
+void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
+    string loop_label = ".L" + to_string(label_number++);
+    string end_label = ".L" + to_string(label_number++);
+
+>>>>>>> call-return
     // for (int i =0; i < 5; i++)
     // int i = 0;
     // push loop label
@@ -548,6 +572,9 @@ void FOR_statement_handler(vector<string> &source, int max_len, Function &f1, in
 */
 void return_handler(string source, Function &f1) {
   // If we return something then we have to move it to %eax
+  if (f1.function_name == "main")
+    f1.assembly_instructions.push_back("movl $0, %eax");
+
   if (source[6] != ';'){
     string rvalue = source.substr(7);
     if(std::find(f1.variables.begin(), f1.variables.end(), rvalue) != f1.variables.end())
@@ -571,10 +598,12 @@ void return_handler(string source, Function &f1) {
 */
 void function_call_handler(string input_str, Function &f1) {
   bool assigned = false;
+  string dest;
   string regex_str = " ";
   auto tokens = split(input_str, regex_str);
   // Check if the line with the function call assigns the returned value
   if (tokens[1] == "="){
+    dest = tokens[0];
     assigned = true;
   }
 
@@ -595,9 +624,10 @@ void function_call_handler(string input_str, Function &f1) {
   params.pop_back(); params.pop_back(); // Get rid of ");"
 
   // Place first 6 parameters onto stack in reverse order
-  // Concern: pushing an array requires 'lea' instead of 'mov'
-  tokens = split(params, ",");
+  // The first parameter gets saved away in %eax so %rdi can be used to push
 
+  tokens = split(params, ",");
+  trim_vector(tokens);
   vector<string> paramsv;
   for (auto p : tokens){
     paramsv.push_back(p);
@@ -606,15 +636,27 @@ void function_call_handler(string input_str, Function &f1) {
   i = 0;
   for (vector::iterator p = tokens.end(); p != tokens.start(); p--){
     for (Variable a : f1.variables){
+
+      /* If the argument is a non-array variable */
       if (p == a.name){
         i++;
-        if (i <= 6){
+        if (i > 0 && i < 6){
           if (a.type == "int")
             f1.assembly_instructions.push_back(add_mov_instruction
-              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[6-i], 32));
+              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[i], 32));
           else
             f1.assembly_instructions.push_back(add_mov_instruction
-              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_64[6-i], 64));
+              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_64[i], 64));
+        }
+        else if (i == 0){ // We put the first param in %eax/%rax for now
+          if (a.type == "int"){
+            f1.assembly_instructions.push_back((to_string(a.addr_offset) + "(%rbp) ") + "%eax");
+            firstparam = "%eax";
+          }
+          else{
+            f1.assembly_instructions.push_back((to_string(a.addr_offset) + "(%rbp) ") + "%rax");
+            firstparam = "%rax";
+          }
         }
         else{
           // After the first 6 arguments are placed in registers, the rest are put on the stack
@@ -623,14 +665,53 @@ void function_call_handler(string input_str, Function &f1) {
           f1.assembly_instructions.push_back("pushq %rdi");
         }
       }
+
+      /* If the argument is an array variable */
+      else if (p + "[0]" == a.name){ // f1.variables contains p[0]
+        i--;
+        if (i > 0){
+            f1.assembly_instructions.push_back("leaq" + to_string(a.addr_offset) + "(%rbp)" + "%" + register_for_argument_64[i]);
+        }
+        else if (i == 0){ // We put the first param address in %rax for now
+            f1.assembly_instructions.push_back(("leaq " + (to_string(a.addr_offset) + "(%rbp) ")) + "%rax");
+            firstparam = "%rax";
+        }
+        else{
+          // After the first 6 arguments are placed in registers, the rest are put on the stack
+          f1.assembly_instructions.push_back("leaq" + to_string(a.addr_offset) + "(%rbp)" + "%rdi");
+          f1.assembly_instructions.push_back("pushq %rdi");
+        }
+      }
+
+      /* If the argument is not a variable but a literal (only works for ints) */
+      else {
+        if (i > 0)
+          f1.assembly_instructions.push_back("movl $" + p + ", %" + register_for_argument_32[i]);
+        else if (i == 0){
+          f1.assembly_instructions.push_back("movl $" + p + ", %eax";
+          firstparam = "%eax";
+        }
+        else
+          f1.assembly_instructions.push_back("pushq $" + p);
+      }
     }
   }
+
+  // Put the first parameter back into %edi or %rdi
+  if (firstparam == "%eax")
+    f1.assembly_instructions.push_back("movl %eax, %edi");
+  else
+    f1.assembly_instructions.push_back("movl %rax, %rdi");
 
   // Call function
   f1.assembly_instructions.push_back("call " + name);
 
-  for (auto s : f1.assembly_instructions)
-    cout << s << endl;
+  // Move stack pointer
+  f1.assembl_instructions.push_back("addq $16, %rsp");
+
+  // Assign returned value
+  store_reg_val(dest, "%eax", f1);
+
 }
 
 /*
@@ -921,10 +1002,6 @@ void assignment_handler(string &s, Function &f1)
     string dest = tokens[0];
     string src = tokens[1];
 
-    if (is_function_call(src))
-    {
-        // a = test(...);
-    }
     else if (is_int(src))
     {
         // a = 0;
