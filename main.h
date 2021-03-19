@@ -8,7 +8,7 @@
 map<Variable,int> variable_handler();
 string add_mov_instruction(string src, string dest, int size);
 bool is_function_call(string line);
-void get_arr_val_into_register(const string s, const string reg, Function &f1);
+void move_arr_val_into_register(const string s, const string reg, Function &f1);
 void comparison_handler(string &s, Function &f1, int &loc);
 
 void function_handler(vector<string> source, int loc, int max_len);

@@ -44,7 +44,7 @@ bool is_function_call(string line) {
     Helper function to handle code like a[0] and a[f] which accesses array elements
     Pushes required assembly instructions to get that value into specified register
 */
-void get_arr_val_into_register(const string s, const string reg, Function &f1)
+void move_arr_val_into_register(const string s, const string reg, Function &f1)
 {
     string arr_name = s.substr(0, s.find("["));
     string arr_index = substr_between_indices(s, s.find("[") + 1, s.find("]"));
@@ -114,14 +114,14 @@ void comparison_handler(string &s, Function &f1, int &loc)
                 if (is_array_accessor(l_comp) && is_array_accessor(r_comp))
                 {
                     // array array
-                    get_arr_val_into_register(l_comp, "%edx", f1);
-                    get_arr_val_into_register(r_comp, "%eax", f1);
+                    move_arr_val_into_register(l_comp, "%edx", f1);
+                    move_arr_val_into_register(r_comp, "%eax", f1);
 
                     f1.assembly_instructions.push_back("cmpl %eax, %edx");
                 }
                 else if (is_array_accessor(l_comp))
                 {
-                    get_arr_val_into_register(l_comp, "%eax", f1);
+                    move_arr_val_into_register(l_comp, "%eax", f1);
                     if (is_int(r_comp))
                     {
                         // array immediate
@@ -145,7 +145,7 @@ void comparison_handler(string &s, Function &f1, int &loc)
                 }
                 else if (is_array_accessor(r_comp))
                 {
-                    get_arr_val_into_register(r_comp, "%eax", f1);
+                    move_arr_val_into_register(r_comp, "%eax", f1);
                     if (is_int(l_comp))
                     {
                         // immediate array
@@ -321,11 +321,8 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         loc++;
     }
     /*
-        code line has +, -, *
-        
+        code line has +, -, * and is an arithmetic instruction
     */
-   // check if theres +, -, *
-   // otherwise
     else if (is_arithmetic_line(source[loc]){
         f1.assembly_instructions.push_back("#" + source[loc]);
         arithmetic_handler(source[loc], f1);

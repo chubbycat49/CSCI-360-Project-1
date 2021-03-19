@@ -7,44 +7,19 @@ using namespace std;
 void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset);
 void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset);
 void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset);
+void arithmetic_handler(string &s, Function &f1);
 
-void get_arr_val_into_register(const string s, const string reg, Function &f1);
+void move_arr_val_into_register(const string s, const string reg, Function &f1);
 void comparison_handler(string &s, Function &f1, int &loc);
+bool is_arithmetic_line(const string s);
 
 int label_num = 2;
-
-/*
-    According to the instruction type, call the corresponding handler.
-*/
-void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset)
-{
-    /*
-        code line starts with variable declaration keyword "int" and ends with semicolon
-    */
-    if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1)
-    {
-        variable_offset_allocation(source, loc, f1, addr_offset);
-        loc++;
-    }
-    /*
-        code line starts with "if"
-    */
-    else if (source[loc].find("if") == 0)
-    {
-        f1.assembly_instructions.push_back("# " + source[loc]);
-        IF_statement_handler(source, loc, max_len, f1, addr_offset);
-    }
-    else
-    {
-        loc++;
-    }
-}
 
 /*
     Helper function to handle code like a[0] and a[f] which accesses array elements
     Pushes required assembly instructions to get that value into specified register
 */
-void get_arr_val_into_register(const string s, const string reg, Function &f1)
+void move_arr_val_into_register(const string s, const string reg, Function &f1)
 {
     string arr_name = s.substr(0, s.find("["));
     string arr_index = substr_between_indices(s, s.find("[") + 1, s.find("]"));
@@ -114,14 +89,14 @@ void comparison_handler(string &s, Function &f1, int &loc)
                 if (is_array_accessor(l_comp) && is_array_accessor(r_comp))
                 {
                     // array array
-                    get_arr_val_into_register(l_comp, "%edx", f1);
-                    get_arr_val_into_register(r_comp, "%eax", f1);
+                    move_arr_val_into_register(l_comp, "%edx", f1);
+                    move_arr_val_into_register(r_comp, "%eax", f1);
 
                     f1.assembly_instructions.push_back("cmpl %eax, %edx");
                 }
                 else if (is_array_accessor(l_comp))
                 {
-                    get_arr_val_into_register(l_comp, "%eax", f1);
+                    move_arr_val_into_register(l_comp, "%eax", f1);
                     if (is_int(r_comp))
                     {
                         // array immediate
@@ -145,7 +120,7 @@ void comparison_handler(string &s, Function &f1, int &loc)
                 }
                 else if (is_array_accessor(r_comp))
                 {
-                    get_arr_val_into_register(r_comp, "%eax", f1);
+                    move_arr_val_into_register(r_comp, "%eax", f1);
                     if (is_int(l_comp))
                     {
                         // immediate array
@@ -202,6 +177,48 @@ void comparison_handler(string &s, Function &f1, int &loc)
 
             f1.assembly_instructions.push_back(command + " " + label_instruction);
         }
+    }
+}
+
+/*
+    Returns if +,-,* are in the string, aka code has arithmetic instructions
+*/
+bool is_arithmetic_line(const string s) {
+    return is_substr(s, "+") && is_substr(s, "-") && is_substr(s, "*");
+}
+
+/*
+    According to the instruction type, call the corresponding handler.
+*/
+void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset)
+{
+    /*
+        code line starts with variable declaration keyword "int" and ends with semicolon
+    */
+    if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1)
+    {
+        variable_offset_allocation(source, loc, f1, addr_offset);
+        loc++;
+    }
+    /*
+        code line starts with "if"
+    */
+    else if (source[loc].find("if") == 0)
+    {
+        f1.assembly_instructions.push_back("# " + source[loc]);
+        IF_statement_handler(source, loc, max_len, f1, addr_offset);
+    }
+     /*
+        code line has +, -, * and is an arithmetic instruction
+    */
+    else if (is_arithmetic_line(source[loc]){
+        f1.assembly_instructions.push_back("#" + source[loc]);
+        arithmetic_handler(source[loc], f1);
+        loc++;
+    }
+    else
+    {
+        loc++;
     }
 }
 
@@ -286,6 +303,13 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
     f1.assembly_instructions.push_back(".L" + to_string(label_num) + ":");
     label_num++;
     loc++;
+}
+
+/*
+    Handle arithmetic statements
+*/
+void arithmetic_handler(string &s, Function &f1) {
+
 }
 
 void intialize_function(Function &f1)
