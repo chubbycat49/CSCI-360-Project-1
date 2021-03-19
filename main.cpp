@@ -6,7 +6,7 @@
 using namespace std;
 
 vector<Function> functions;
-int label_number = 2;
+int label_num = 2;
 
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
