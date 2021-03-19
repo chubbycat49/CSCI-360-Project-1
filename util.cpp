@@ -5,9 +5,12 @@ using namespace std;
 /*
     Helper function which given a string and a delimiter, creates a iterator of the split tokens
     Sourced from: https://stackoverflow.com/questions/14265581/parse-split-a-string-in-c-using-string-delimiter-standard-c
+    Need to use longer version bc: https://stackoverflow.com/questions/53582365/regex-token-iterator-attempting-to-reference-a-deleted-function
 */
 vector<string> split(const string str, const string regex_str) {
-    return {sregex_token_iterator(str.begin(), str.end(), regex(regex_str), -1), sregex_token_iterator()};
+    regex regexz(regex_str);
+    vector<string> list(sregex_token_iterator(str.begin(), str.end(), regexz, -1), sregex_token_iterator());
+    return list;
 }
 
 /*
