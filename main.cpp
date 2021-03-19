@@ -49,8 +49,12 @@ string add_mov_instruction(string src, string dest, int size) {
 
 /*
     Return if given code line is a function call
+    Examples:
+    i = test(a, b, c, d, e, f, g, h);
+    test(a, b, c, d, e, f, g, h);
 */
 bool is_function_call(string line) {
+  return (is_substr(line,"(") && !is_substr(line,"+") && !is_substr(line,"-") && !is_substr(line,"*"));
 }
 
 /*
@@ -430,9 +434,9 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     */
     else {
         // a = b
-        // i = test(a, b, c, d, e, f, g, h);
-        // assignment_handler();
-        // loc++;
+        f1.assembly_instructions.push_back("#" + source[loc]);
+        assignment_handler();
+        loc++;
     }
 }
 
@@ -611,20 +615,20 @@ void function_call_handler(string input_str, Function &f1) {
   // The first parameter gets saved away in %eax so %rdi can be used to push
 
   tokens = split(params, ",");
-
+  trim_vector(tokens);
   vector<string> paramsv;
   for (auto p : tokens){
     paramsv.push_back(p);
   }
 
-  i = 6;
+  i = 0;
   for (vector::iterator p = tokens.end(); p != tokens.start(); p--){
     for (Variable a : f1.variables){
 
       /* If the argument is a non-array variable */
       if (p == a.name){
-        i--;
-        if (i > 0){
+        i++;
+        if (i > 0 && i < 6){
           if (a.type == "int")
             f1.assembly_instructions.push_back(add_mov_instruction
               (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[i], 32));
