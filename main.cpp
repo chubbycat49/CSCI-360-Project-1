@@ -1,6 +1,4 @@
 #include "main.h"
-#include "Function.h"
-#include "Variable.h"
 #include "util.h"
 
 using namespace std;
@@ -11,10 +9,10 @@ int label_num = 2;
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-map<Variable,int> variable_handler(string input_str, int idk, int& addr_offset) {
-  map<Variable, int> out;
+map<string,Variable> variable_handler(string input_str, int idk, int& addr_offset) {
+  map<string,Variable> out;
   auto var_tokens = split(input_str, ",");
-  for (auto c : tokens){
+  for (auto c : var_tokens){
     auto tmp = split(c, " ");
     string var_type = tmp[0];
     string var_name = tmp[1];
@@ -327,7 +325,8 @@ void function_handler(vector<string> source, int loc, int max_len) {
     if (parameter_str.length() > 0) {
         f1.variables = variable_handler(parameter_str, 2, addr_offset);
         int number_of_parameter = 0;
-        for (auto &var : f1.variables) {
+        for (auto &varpair : f1.variables) {
+            var = varpair.second;
             number_of_parameter++;
             // First 6 parameters <- registers
             if (number_of_parameter <= 6) {
@@ -593,6 +592,7 @@ void return_handler(string source, Function &f1) {
 void function_call_handler(string input_str, Function &f1) {
   bool assigned = false;
   string dest;
+  string firstparam;
   string regex_str = " ";
   auto tokens = split(input_str, regex_str);
   // Check if the line with the function call assigns the returned value

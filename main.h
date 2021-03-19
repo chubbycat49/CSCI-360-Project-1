@@ -4,6 +4,10 @@
 #include <vector>
 #include <string>
 #include <map>
+#include "Function.h"
+#include "Variable.h"
+
+using namespace std;
 
 map<Variable,int> variable_handler();
 string add_mov_instruction(string src, string dest, int size);
