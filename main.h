@@ -19,11 +19,11 @@ void comparison_handler(string &s, Function &f1, int &loc);
 void function_handler(vector<string> source, int loc, int max_len);
 void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset);
 void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset);
-void IF_statement_handler(string source, int max_len, Function &f1, int &addr_offset);
-void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset);
+void IF_statement_handler(vector<string> &source, int max_len, Function &f1, int &addr_offset);
+void FOR_statement_handler(vector<string> &source, int max_len, Function &f1, int &addr_offset);
 void return_handler(string source, Function &f1);
 void function_call_handler(string source, Function &f1);
-void arithmetic_handler(string line, Function &f1);
+void arithmetic_handler(string &s, Function &f1);
 void assignment_handler(string &s, Function &f1);
 
 #endif

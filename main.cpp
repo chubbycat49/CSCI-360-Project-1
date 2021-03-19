@@ -392,7 +392,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     */
     else if (source[loc].find("return") == 0) {
         f1.assembly_instructions.push_back("#" + source[loc]);
-        return_handler(source, loc, f1);
+        return_handler(source[loc], f1);
         loc++;
     }
     /*
@@ -400,7 +400,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     */
     else if (is_function_call(source[loc])) {
         f1.assembly_instructions.push_back("#" + source[loc]);
-        function_call_handler(source, loc, f1);
+        function_call_handler(source[loc], f1);
         f1.is_leaf_function = false;
         loc++;
     }
@@ -509,7 +509,7 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
 /*
     Handle for statements
 */
-void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
+void FOR_statement_handler(vector<string> &source, int max_len, Function &f1, int &addr_offset) {
     string loop_label = ".L" + to_string(label_num++);
     string end_label = ".L" + to_string(label_num++);
     
