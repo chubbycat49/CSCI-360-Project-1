@@ -97,6 +97,7 @@ vector<string> loadFile(string filename, int &maxlen) {
     while (!inputFile.eof()) {
         getline(inputFile, inputLine);
         trim(inputLine);
+        // cout << inputLine << endl;
         sourceCode.push_back(inputLine);
         maxlen++;
     }
