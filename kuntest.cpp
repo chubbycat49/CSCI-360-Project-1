@@ -12,6 +12,7 @@ void arithmetic_handler(string &s, Function &f1);
 void move_immediate_val_into_register(const string s, const string reg, Function &f1);
 void move_var_val_into_register(const string s, const string reg, Function &f1);
 void move_arr_val_into_register(const string s, const string reg, Function &f1);
+void store_reg_val(const string dest, const string reg, Function &f1);
 void comparison_handler(string &s, Function &f1, int &loc);
 bool is_arithmetic_line(const string s);
 
@@ -63,6 +64,28 @@ void move_arr_val_into_register(const string s, const string reg, Function &f1)
         // get where arr_name[0] is
         string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
         f1.assembly_instructions.push_back("movl " + arr_start_offset + "(%rbp, %rax, 4), " + reg);
+    }
+}
+
+void store_reg_val(const string dest, const string reg, Function &f1) {
+    if (is_array_accessor_dynamic(dest)) {
+        /*
+            storing in array via variable
+        */
+        string arr_name = dest.substr(0, dest.find("["));
+        string arr_index = substr_between_indices(dest, dest.find("[")+1, dest.find("]"));
+
+        f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(arr_index).addr_offset) + "(%rbp), %eax");
+        f1.assembly_instructions.push_back("cltq");
+        // get where arr_name[0] is
+        string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
+        f1.assembly_instructions.push_back("movl " + reg + ", " + arr_start_offset + "(%rbp, %rax, 4)");
+
+    } else{
+        /*
+            storing in variable or static array (a[0])
+        */
+        f1.assembly_instructions.push_back("movl " + reg + ", " + to_string(f1.variables.at(dest).addr_offset) + "(%rbp)");
     }
 }
 
@@ -556,6 +579,23 @@ void arithmetic_handler(string &s, Function &f1)
             f1.assembly_instructions.push_back("imull " + to_string(f1.variables.at(r_val).addr_offset) + "(%rbp), %eax");
         }
     }
+
+    string reg;
+    if (is_array_accessor(dest)) {
+        // add move to edx line
+        f1.assembly_instructions.push_back("movl %eax, %edx");
+        reg = "%edx";
+    } else {
+        reg = "%eax";
+    }
+    store_reg_val(dest, reg, f1);
+}
+
+/*
+    Handles assignment statements
+*/
+void assignment_handler(string &s, Function &f1) {
+
 }
 
 void intialize_function(Function &f1)

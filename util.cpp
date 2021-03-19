@@ -75,6 +75,14 @@ bool is_array_accessor(const string s) {
 }
 
 /*
+    Helper function to determine if a line of code is accessing an array element via another variable
+    i.e a[x] returns true while a[0] returns false
+*/
+bool is_array_accessor_dynamic(const string s) {
+    return is_substr(s, "[") && is_substr(s, "]") && !is_int(substr_between_indices(s, s.find("[")+1, s.find("]")));
+}
+
+/*
     Helper function to determine if string is int
     Sourced from: https://stackoverflow.com/questions/2844817/how-do-i-check-if-a-c-string-is-an-int
 */
