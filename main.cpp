@@ -565,6 +565,9 @@ void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_o
 */
 void return_handler(string source, Function &f1) {
   // If we return something then we have to move it to %eax
+  if (f1.function_name == "main")
+    f1.assembly_instructions.push_back("movl $0, %eax");
+
   if (source[6] != ';'){
     string rvalue = source.substr(7);
     if(std::find(f1.variables.begin(), f1.variables.end(), rvalue) != f1.variables.end())
@@ -588,10 +591,12 @@ void return_handler(string source, Function &f1) {
 */
 void function_call_handler(string input_str, Function &f1) {
   bool assigned = false;
+  string dest;
   string regex_str = " ";
   auto tokens = split(input_str, regex_str);
   // Check if the line with the function call assigns the returned value
   if (tokens[1] == "="){
+    dest = tokens[0];
     assigned = true;
   }
 
@@ -693,6 +698,13 @@ void function_call_handler(string input_str, Function &f1) {
 
   // Call function
   f1.assembly_instructions.push_back("call " + name);
+
+  // Move stack pointer
+  f1.assembl_instructions.push_back("addq $16, %rsp");
+
+  // Assign returned value
+  store_reg_val(dest, "%eax", f1);
+
 }
 
 /*
@@ -983,10 +995,6 @@ void assignment_handler(string &s, Function &f1)
     string dest = tokens[0];
     string src = tokens[1];
 
-    if (is_function_call(src))
-    {
-        // a = test(...);
-    }
     else if (is_int(src))
     {
         // a = 0;
