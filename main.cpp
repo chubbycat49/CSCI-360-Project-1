@@ -326,7 +326,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
         f1.variables = variable_handler(parameter_str, 2, addr_offset);
         int number_of_parameter = 0;
         for (auto &varpair : f1.variables) {
-            var = varpair.second;
+            Variable var = varpair.second;
             number_of_parameter++;
             // First 6 parameters <- registers
             if (number_of_parameter <= 6) {
@@ -364,7 +364,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
     }
 
     if (f1.is_leaf_function == false && f1.variables.size() > 0) {
-        int last_offset = 0 - f1.variables.back().addr_offset;
+        int last_offset = 0 - f1.variables.end()->second.addr_offset;
         // if last offset is not divisible by 16, then do 16 bytes address alignment: multiples of 16
         if (last_offset % 16 != 0) {
             last_offset = ceil((float)last_offset / 16) * 16;
@@ -423,7 +423,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     /*
         code line has +, -, * and is an arithmetic instruction
     */
-    else if (is_arithmetic_line(source[loc]){
+    else if (is_arithmetic_line(source[loc])){
         f1.assembly_instructions.push_back("#" + source[loc]);
         arithmetic_handler(source[loc], f1);
         loc++;
@@ -434,7 +434,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     else {
         // a = b
         f1.assembly_instructions.push_back("#" + source[loc]);
-        assignment_handler();
+        assignment_handler(source[loc], f1);
         loc++;
     }
 }
@@ -570,9 +570,9 @@ void return_handler(string source, Function &f1) {
 
   if (source[6] != ';'){
     string rvalue = source.substr(7);
-    if(std::find(f1.variables.begin(), f1.variables.end(), rvalue) != f1.variables.end())
+    if(f1.variables.count(rvalue) > 0)
     {
-      if (f1.variables[std::find(f1.variables.begin(), f1.variables.end(), rvalue)].type == "int")
+      if (f1.variables[rvalue].type == "int")
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 32));
       else
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 64));
@@ -628,9 +628,9 @@ void function_call_handler(string input_str, Function &f1) {
   }
 
   i = 0;
-  for (vector::iterator p = tokens.end(); p != tokens.start(); p--){
-    for (Variable a : f1.variables){
-
+  for (auto p : tokens){
+    for (auto apair : f1.variables){
+      Variable a = apair.second;
       /* If the argument is a non-array variable */
       if (p == a.name){
         i++;
@@ -682,7 +682,7 @@ void function_call_handler(string input_str, Function &f1) {
         if (i > 0)
           f1.assembly_instructions.push_back("movl $" + p + ", %" + register_for_argument_32[i]);
         else if (i == 0){
-          f1.assembly_instructions.push_back("movl $" + p + ", %eax";
+          f1.assembly_instructions.push_back("movl $" + p + ", %eax");
           firstparam = "%eax";
         }
         else
@@ -701,7 +701,7 @@ void function_call_handler(string input_str, Function &f1) {
   f1.assembly_instructions.push_back("call " + name);
 
   // Move stack pointer
-  f1.assembl_instructions.push_back("addq $16, %rsp");
+  f1.assembly_instructions.push_back("addq $16, %rsp");
 
   // Assign returned value
   store_reg_val(dest, "%eax", f1);
