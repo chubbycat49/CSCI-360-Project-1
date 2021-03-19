@@ -1,5 +1,4 @@
 #include "main.h"
-#include "util.h"
 
 using namespace std;
 
@@ -432,7 +431,6 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         otherwise, code line is an assignment instruction
     */
     else {
-        // a = b
         f1.assembly_instructions.push_back("#" + source[loc]);
         assignment_handler(source[loc], f1);
         loc++;
@@ -525,39 +523,8 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
 /*
     Handle for statements
 */
-
-void FOR_statement_handler(vector<string> &source, int max_len, Function &f1, int &addr_offset) {
-    string loop_label = ".L" + to_string(label_num++);
-    string end_label = ".L" + to_string(label_num++);
-
-    // for (int i =0; i < 5; i++)
-    // int i = 0;
-    // push loop label
-    // i < 5
-    // jump end_label
-    // i = i + 1
-
-    // loc++;  // go to next source code line
-    // bool next_function = false;
-    // while (loc < max_len) {
-    //     if ((source[loc].find("int") == 0 || source[loc].find("void") == 0) && source[loc].find("}") == source[loc].length() - 1) {
-    //         // start with a new function
-    //         next_function = true;
-    //         break;
-    //     } else if (source[loc] == "}") {
-    //         loc++;
-    //     } else {
-    //         // line is not function call or function end
-    //         // send to common handler dispatcher
-    //         common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
-    //     }
-    // }
-
-    // finished the for loop, already hit the }
-    // unconditional jump back to loop_label  jmp     loop_label
-    // push end_label
-
-
+void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset) {
+    
 }
 
 /*
@@ -572,7 +539,7 @@ void return_handler(string source, Function &f1) {
     string rvalue = source.substr(7);
     if(f1.variables.count(rvalue) > 0)
     {
-      if (f1.variables[rvalue].type == "int")
+      if (f1.variables.at(rvalue).type == "int")
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 32));
       else
         f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 64));
@@ -996,7 +963,7 @@ void assignment_handler(string &s, Function &f1)
     string dest = tokens[0];
     string src = tokens[1];
 
-    else if (is_int(src))
+    if (is_int(src))
     {
         // a = 0;
         store_immedaite_val(dest, src, f1);
