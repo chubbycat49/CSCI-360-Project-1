@@ -510,8 +510,8 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
     Handle for statements
 */
 void FOR_statement_handler(string source, int max_len, Function &f1, int &addr_offset) {
-    string loop_label = ".L" + to_string(label_number++);
-    string end_label = ".L" + to_string(label_number++);
+    string loop_label = ".L" + to_string(label_num++);
+    string end_label = ".L" + to_string(label_num++);
     
     // for (int i =0; i < 5; i++)
     // int i = 0;
