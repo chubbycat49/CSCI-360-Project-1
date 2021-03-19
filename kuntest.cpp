@@ -273,7 +273,8 @@ bool is_arithmetic_line(const string s)
 /*
     Return if given code line is a function call
 */
-bool is_function_call(string line) {
+bool is_function_call(string line)
+{
     return false;
 }
 
@@ -686,22 +687,27 @@ void assignment_handler(string &s, Function &f1)
     string dest = tokens[0];
     string src = tokens[1];
 
-    if (is_function_call(src)) {
+    if (is_function_call(src))
+    {
         // a = test(...);
-
-    } else if (is_int(src)) {
+    }
+    else if (is_int(src))
+    {
         // a = 0;
         store_immedaite_val(dest, src, f1);
-    } else if (is_array_accessor(src)){
+    }
+    else if (is_array_accessor(src))
+    {
         // a = c[1], a = c[x]
         move_arr_val_into_register(src, "%eax", f1);
         store_reg_val(dest, "%eax", f1);
-    } else {
+    }
+    else
+    {
         // a = c
         move_var_val_into_register(src, "%eax", f1);
         store_reg_val(dest, "%eax", f1);
     }
-
 }
 
 void intialize_function(Function &f1)
