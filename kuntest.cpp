@@ -67,21 +67,24 @@ void move_arr_val_into_register(const string s, const string reg, Function &f1)
     }
 }
 
-void store_reg_val(const string dest, const string reg, Function &f1) {
-    if (is_array_accessor_dynamic(dest)) {
+void store_reg_val(const string dest, const string reg, Function &f1)
+{
+    if (is_array_accessor_dynamic(dest))
+    {
         /*
             storing in array via variable
         */
         string arr_name = dest.substr(0, dest.find("["));
-        string arr_index = substr_between_indices(dest, dest.find("[")+1, dest.find("]"));
+        string arr_index = substr_between_indices(dest, dest.find("[") + 1, dest.find("]"));
 
         f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(arr_index).addr_offset) + "(%rbp), %eax");
         f1.assembly_instructions.push_back("cltq");
         // get where arr_name[0] is
         string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
         f1.assembly_instructions.push_back("movl " + reg + ", " + arr_start_offset + "(%rbp, %rax, 4)");
-
-    } else{
+    }
+    else
+    {
         /*
             storing in variable or static array (a[0])
         */
@@ -255,7 +258,8 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     /*
         code line has +, -, * and is an arithmetic instruction
     */
-    else if (is_arithmetic_line(source[loc])) {
+    else if (is_arithmetic_line(source[loc]))
+    {
         f1.assembly_instructions.push_back("#" + source[loc]);
         arithmetic_handler(source[loc], f1);
         loc++;
@@ -370,34 +374,45 @@ void arithmetic_handler(string &s, Function &f1)
     {
         if (is_array_accessor(l_val) || is_array_accessor(r_val))
         {
-            if (is_array_accessor(l_val) && is_array_accessor(r_val)) {
+            if (is_array_accessor(l_val) && is_array_accessor(r_val))
+            {
                 // arr arr
                 move_arr_val_into_register(l_val, "%edx", f1);
                 move_arr_val_into_register(r_val, "%eax", f1);
 
                 f1.assembly_instructions.push_back("addl %edx, %eax");
-            } else if (is_array_accessor(l_val)) {
-                if (is_int(r_val)) {
+            }
+            else if (is_array_accessor(l_val))
+            {
+                if (is_int(r_val))
+                {
                     // arr num
                     move_arr_val_into_register(l_val, "%eax", f1);
 
                     r_val = "$" + r_val;
-                } else {
+                }
+                else
+                {
                     // arr var
                     move_arr_val_into_register(l_val, "%edx", f1);
                     move_var_val_into_register(r_val, "%eax", f1);
-                    
+
                     r_val = "%edx";
                 }
 
                 f1.assembly_instructions.push_back("addl " + r_val + ", %eax");
-            } else if (is_array_accessor(r_val)) {
-                if (is_int(l_val)) {
+            }
+            else if (is_array_accessor(r_val))
+            {
+                if (is_int(l_val))
+                {
                     // num arr
                     move_arr_val_into_register(r_val, "%eax", f1);
 
                     r_val = "$" + r_val;
-                } else {
+                }
+                else
+                {
                     // var arr
                     move_arr_val_into_register(r_val, "%edx", f1);
                     move_var_val_into_register(l_val, "%eax", f1);
@@ -421,14 +436,14 @@ void arithmetic_handler(string &s, Function &f1)
                 // num + var
                 move_var_val_into_register(r_val, "%eax", f1);
 
-                f1.assembly_instructions.push_back("addl $" + l_val  + ", %eax");
+                f1.assembly_instructions.push_back("addl $" + l_val + ", %eax");
             }
             else if (is_int(r_val))
             {
                 // var + num
                 move_var_val_into_register(l_val, "%eax", f1);
 
-                f1.assembly_instructions.push_back("addl $" + r_val  + ", %eax");
+                f1.assembly_instructions.push_back("addl $" + r_val + ", %eax");
             }
         }
         else
@@ -444,32 +459,43 @@ void arithmetic_handler(string &s, Function &f1)
     {
         if (is_array_accessor(l_val) || is_array_accessor(r_val))
         {
-            if (is_array_accessor(l_val) && is_array_accessor(r_val)) {
+            if (is_array_accessor(l_val) && is_array_accessor(r_val))
+            {
                 // arr arr
                 move_arr_val_into_register(l_val, "%eax", f1);
                 move_arr_val_into_register(r_val, "%edx", f1);
 
                 f1.assembly_instructions.push_back("subl %edx, %eax");
-            } else if (is_array_accessor(l_val)) {
-                if (is_int(r_val)) {
+            }
+            else if (is_array_accessor(l_val))
+            {
+                if (is_int(r_val))
+                {
                     // arr num
                     move_arr_val_into_register(l_val, "%eax", f1);
 
                     r_val = "$" + r_val;
-                } else {
+                }
+                else
+                {
                     // arr var
                     move_arr_val_into_register(l_val, "%eax", f1);
-                    
+
                     r_val = to_string(f1.variables.at(r_val).addr_offset) + "(%rbp)";
                 }
 
                 f1.assembly_instructions.push_back("subl " + r_val + ", %eax");
-            } else if (is_array_accessor(r_val)) {
-                if (is_int(l_val)) {
+            }
+            else if (is_array_accessor(r_val))
+            {
+                if (is_int(l_val))
+                {
                     // num arr
                     move_arr_val_into_register(r_val, "%edx", f1);
                     move_immediate_val_into_register(l_val, "%eax", f1);
-                } else {
+                }
+                else
+                {
                     // var arr
                     move_arr_val_into_register(r_val, "%edx", f1);
                     move_var_val_into_register(l_val, "%eax", f1);
@@ -513,33 +539,43 @@ void arithmetic_handler(string &s, Function &f1)
     {
         if (is_array_accessor(l_val) || is_array_accessor(r_val))
         {
-            if (is_array_accessor(l_val) && is_array_accessor(r_val)) {
+            if (is_array_accessor(l_val) && is_array_accessor(r_val))
+            {
                 // arr arr
                 move_arr_val_into_register(l_val, "%eax", f1);
                 move_arr_val_into_register(r_val, "%edx", f1);
 
                 f1.assembly_instructions.push_back("imull %edx, %eax");
-
-            } else if (is_array_accessor(l_val)) {
-                if (is_int(r_val)) {
+            }
+            else if (is_array_accessor(l_val))
+            {
+                if (is_int(r_val))
+                {
                     // arr num
                     move_arr_val_into_register(l_val, "%eax", f1);
 
                     f1.assembly_instructions.push_back("imull $" + r_val + ", %eax");
-                } else {
+                }
+                else
+                {
                     // arr var
                     move_arr_val_into_register(l_val, "%eax", f1);
                     move_var_val_into_register(r_val, "%edx", f1);
 
                     f1.assembly_instructions.push_back("imull %edx, %eax");
                 }
-            } else if (is_array_accessor(r_val)) {
-                if (is_int(l_val)) {
+            }
+            else if (is_array_accessor(r_val))
+            {
+                if (is_int(l_val))
+                {
                     // num arr
                     move_arr_val_into_register(r_val, "%eax", f1);
 
                     f1.assembly_instructions.push_back("imull $" + l_val + ", %eax");
-                } else {
+                }
+                else
+                {
                     // var arr
                     move_arr_val_into_register(r_val, "%eax", f1);
                     move_var_val_into_register(l_val, "%edx", f1);
@@ -581,11 +617,14 @@ void arithmetic_handler(string &s, Function &f1)
     }
 
     string reg;
-    if (is_array_accessor(dest)) {
+    if (is_array_accessor(dest))
+    {
         // add move to edx line
         f1.assembly_instructions.push_back("movl %eax, %edx");
         reg = "%edx";
-    } else {
+    }
+    else
+    {
         reg = "%eax";
     }
     store_reg_val(dest, reg, f1);
@@ -594,8 +633,8 @@ void arithmetic_handler(string &s, Function &f1)
 /*
     Handles assignment statements
 */
-void assignment_handler(string &s, Function &f1) {
-
+void assignment_handler(string &s, Function &f1)
+{
 }
 
 void intialize_function(Function &f1)
