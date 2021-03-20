@@ -14,4 +14,5 @@ int main() {
     int h[2] = {10, 11};
     int i = 0;
     i = test(a, b, c, d, e, f, g, h);
+    return 0;
 }

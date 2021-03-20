@@ -117,3 +117,26 @@ vector<string> loadFile(string filename, int &maxlen) {
 
     return sourceCode;
 }
+
+void writeFile(string filename, vector<string> assembly){
+  ofstream fileOUT(filename, /*ios::app*/ ios::out | ios::trunc); // open filename.txt in append mode
+
+  for (string s : assembly)
+    fileOUT << s << endl; // append "some stuff" to the end of the file
+
+  fileOUT.close(); // close the file
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+//

@@ -409,7 +409,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
-    cout << endl << source[loc] << endl;
+    // cout << endl << source[loc] << endl;
 
     if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1) {
         variable_offset_allocation(source, loc, f1, addr_offset);
@@ -620,9 +620,12 @@ void function_call_handler(string input_str, Function &f1) {
 
   // Get name of function and parameter list
   std::string name = callstr.substr(0, callstr.find("("));
+  // cout << "Name: " << name << endl;
   std::string params = callstr.substr(callstr.find("(") + 1);
+  // cout << "Params: " << params << endl;
   params.pop_back(); params.pop_back(); // Get rid of ");"
-
+  // cout << "Popped params: " << params << endl;
+  // cout << "Params: " << params << " " << params.size();
   // Place first 6 parameters onto stack in reverse order
   // The first parameter gets saved away in %eax so %rdi can be used to push
 
@@ -633,67 +636,70 @@ void function_call_handler(string input_str, Function &f1) {
     paramsv.push_back(p);
   }
 
-  i = 0;
+  // cout << "Tokens: ";
+  // for (auto c : tokens)
+  //   cout << c << " " << c.size() << " ";
+
+  i = -1;
   for (auto p : tokens){
-    for (auto apair : f1.variables){
-      Variable a = apair.second;
-      /* If the argument is a non-array variable */
-      if (p == a.name){
-        i++;
-        if (i > 0 && i < 6){
-          if (a.type == "int")
-            f1.assembly_instructions.push_back(add_mov_instruction
-              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[i], 32));
-          else
-            f1.assembly_instructions.push_back(add_mov_instruction
-              (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_64[i], 64));
-        }
-        else if (i == 0){ // We put the first param in %eax/%rax for now
-          if (a.type == "int"){
-            f1.assembly_instructions.push_back((to_string(a.addr_offset) + "(%rbp) ") + "%eax");
-            firstparam = "%eax";
-          }
-          else{
-            f1.assembly_instructions.push_back((to_string(a.addr_offset) + "(%rbp) ") + "%rax");
-            firstparam = "%rax";
-          }
-        }
-        else{
-          // After the first 6 arguments are placed in registers, the rest are put on the stack
-          f1.assembly_instructions.push_back(add_mov_instruction(
-            to_string(a.addr_offset) + "(%rbp)", "%rdi", 64));
-          f1.assembly_instructions.push_back("pushq %rdi");
-        }
+    /* If the argument is a non-array variable */
+    if (f1.variables.count(p) > 0){
+      Variable a = f1.variables.at(p);
+      i++;
+      if (i > 0 && i < 6){
+        if (a.type == "int")
+          f1.assembly_instructions.push_back(add_mov_instruction
+            (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_32[i], 32));
+        else
+          f1.assembly_instructions.push_back(add_mov_instruction
+            (to_string(a.addr_offset) + "(%rbp)", "%" + register_for_argument_64[i], 64));
       }
-
-      /* If the argument is an array variable */
-      else if (p + "[0]" == a.name){ // f1.variables contains p[0]
-        i--;
-        if (i > 0){
-            f1.assembly_instructions.push_back("leaq" + to_string(a.addr_offset) + "(%rbp)" + "%" + register_for_argument_64[i]);
-        }
-        else if (i == 0){ // We put the first param address in %rax for now
-            f1.assembly_instructions.push_back(("leaq " + (to_string(a.addr_offset) + "(%rbp) ")) + "%rax");
-            firstparam = "%rax";
-        }
-        else{
-          // After the first 6 arguments are placed in registers, the rest are put on the stack
-          f1.assembly_instructions.push_back("leaq" + to_string(a.addr_offset) + "(%rbp)" + "%rdi");
-          f1.assembly_instructions.push_back("pushq %rdi");
-        }
-      }
-
-      /* If the argument is not a variable but a literal (only works for ints) */
-      else {
-        if (i > 0)
-          f1.assembly_instructions.push_back("movl $" + p + ", %" + register_for_argument_32[i]);
-        else if (i == 0){
-          f1.assembly_instructions.push_back("movl $" + p + ", %eax");
+      else if (i == 0){ // We put the first param in %eax/%rax for now
+        if (a.type == "int"){
+          f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp) ", "%eax", 32));
           firstparam = "%eax";
         }
-        else
-          f1.assembly_instructions.push_back("pushq $" + p);
+        else{
+          f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp) ", "%rax", 64));
+          firstparam = "%rax";
+        }
       }
+      else{
+        // After the first 6 arguments are placed in registers, the rest are put on the stack
+        f1.assembly_instructions.push_back(add_mov_instruction(
+          to_string(a.addr_offset) + "(%rbp)", "%rdi", 64));
+        f1.assembly_instructions.push_back("pushq %rdi");
+      }
+    }
+
+    /* If the argument is an array variable */
+    else if (f1.variables.count(p + "[0]") > 0){ // f1.variables contains p[0]
+      Variable a = f1.variables.at(p + "[0]");
+      i++;
+      if (i > 0 && i < 6){
+          f1.assembly_instructions.push_back("leaq " + to_string(a.addr_offset) + "(%rbp), " + "%" + register_for_argument_64[i]);
+      }
+      else if (i == 0){ // We put the first param address in %rax for now
+          f1.assembly_instructions.push_back("leaq " + to_string(a.addr_offset) + "(%rbp), " + "%rax");
+          firstparam = "%rax";
+      }
+      else{
+        // After the first 6 arguments are placed in registers, the rest are put on the stack
+        f1.assembly_instructions.push_back("leaq " + to_string(a.addr_offset) + "(%rbp), " + "%rdi");
+        f1.assembly_instructions.push_back("pushq %rdi");
+      }
+    }
+
+    /* If the argument is not a variable but a literal (only works for ints) */
+    else {
+      if (i > 0)
+        f1.assembly_instructions.push_back("movl $" + p + ", %" + register_for_argument_32[i]);
+      else if (i == 0){
+        f1.assembly_instructions.push_back("movl $" + p + ", %eax");
+        firstparam = "%eax";
+      }
+      else
+        f1.assembly_instructions.push_back("pushq $" + p);
     }
   }
 
@@ -1026,6 +1032,10 @@ int main() {
     vector<string> source = loadFile("test1.cpp", max_len);
 
     function_handler(source, 0, max_len);
+
+    for (Function f : functions){
+      writeFile("out.txt", f.assembly_instructions);
+    }
 
     return 0;
 }
