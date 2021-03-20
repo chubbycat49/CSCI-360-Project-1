@@ -524,7 +524,48 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
     Handle for statements
 */
 void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset) {
+    string loop_label = ".L" + to_string(label_number++);
+    string end_label = ".L" + to_string(label_number++);
+
+    string line = source[loc];
+
+    line.erase(line.length() - 2, line.length());//remove ){
+    line.erase(0,4);//remove for(
+    vector<string> tokens = split(line, "; ");
+
+    assignment_handler(tokens[0], f1);
+    f1.assembly_instructions.push_back("jmp " + loop_label);
+    f1.assembly_instructions.push_back(loop_label);
+    arithmetic_handler(tokens[2], f1);
+    loc++;
+    common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
     
+    // for (int i =0; i < 5; i++)
+    // int i = 0;
+    // push loop label
+    // i < 5
+    // jump end_label
+    // i = i + 1
+
+    // loc++;  // go to next source code line
+    // bool next_function = false;
+    // while (loc < max_len) {
+    //     if ((source[loc].find("int") == 0 || source[loc].find("void") == 0) && source[loc].find("}") == source[loc].length() - 1) {
+    //         // start with a new function
+    //         next_function = true;
+    //         break;
+    //     } else if (source[loc] == "}") {
+    //         loc++;
+    //     } else {
+    //         // line is not function call or function end
+    //         // send to common handler dispatcher
+    //         common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+    //     }
+    // }
+
+    // finished the for loop, already hit the }
+    // unconditional jump back to loop_label  jmp     loop_label
+    // push end_label
 }
 
 /*
