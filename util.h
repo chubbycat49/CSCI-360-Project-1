@@ -21,6 +21,6 @@ bool is_array_accessor_dynamic(const string s);
 bool is_int(const string s);
 
 vector<string> loadFile(string filename, int &maxlen);
-void writeFile(string filename, vector<string> assembly);
+void writeFile(string filename, vector<string> assembly, string f_name);
 
 #endif
