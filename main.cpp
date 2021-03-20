@@ -538,11 +538,13 @@ void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Functi
     f1.assembly_instructions.push_back(loop_label);
     arithmetic_handler(tokens[2], f1);
     loc++;
-
-    common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+    if(source[loc] != "}"){
+        common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+    }
+   
      
     f1.assembly_instructions.push_back("jmp " + loop_label);
-    f1.assembly_instructions.push_back(loop_label);
+    f1.assembly_instructions.push_back(end_label);
 
     
     // for (int i =0; i < 5; i++)
