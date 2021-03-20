@@ -8,11 +8,17 @@ int label_num = 2;
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
+/*
+    Helper function to debug a string and its size
+*/
 void view_var(string s)
 {
     cout << s << "\t" << s.size() << endl;
 }
 
+/*
+    Helper function to print a function's instructions and variables
+*/
 void view_function(Function f1, bool show_vars)
 {
     for (auto x : f1.assembly_instructions)
@@ -29,7 +35,31 @@ void view_function(Function f1, bool show_vars)
     }
 }
 
-map<string,Variable> variable_handler(string input_str, int idk, int& addr_offset) {
+/*
+    Helper function used to create a modifed variable map that only includes
+    arr[0] if the first 6 parameters has arrays
+*/
+map<string,Variable> actual_function_params(map<string, Variable> vars) {
+    map<string, Variable> params;
+    int counter = 0;
+
+    for (auto v: vars) {
+        string var_name = v.first;
+        if(is_array_accessor(var_name) && (var_name[var_name.find("[") + 1] != '0') && counter <= 6) {
+            continue;
+        }
+        counter++;
+
+        params.insert(v);
+    }
+
+    return params;
+}
+
+/*
+    Helper function to handle instructions related to loading values from parameters onto the stack
+*/
+map<string,Variable> variable_handler(string input_str, int& addr_offset) {
   map<string,Variable> out;
   auto var_tokens = split(input_str, ", ");
   for (auto c : var_tokens){
@@ -69,6 +99,9 @@ map<string,Variable> variable_handler(string input_str, int idk, int& addr_offse
   return out;
 }
 
+/*
+    Helper function used to translate a move instruction depending on variable size
+*/
 string add_mov_instruction(string src, string dest, int size) {
   string out;
   switch(size){
@@ -378,9 +411,14 @@ void function_handler(vector<string> source, int loc, int max_len) {
     string parameter_str = tempstr.substr(tempstr.find('(') + 1, tempstr.find('('));
     parameter_str.pop_back();
     if (parameter_str.length() > 0) {
-        f1.variables = variable_handler(parameter_str, 2, addr_offset);
         int number_of_parameter = 0;
-        for (auto &varpair : f1.variables) {
+
+        // variable_handler makes variable for e[0], e[1], e[2], increaseing number of parameters
+        f1.variables = variable_handler(parameter_str, addr_offset);
+
+        // need to exclude e[1], e[2] from this loop
+        // actual_function params does that
+        for (auto &varpair : actual_function_params(f1.variables)) {
             Variable var = varpair.second;
             number_of_parameter++;
             // First 6 parameters <- registers
@@ -395,7 +433,9 @@ void function_handler(vector<string> source, int loc, int max_len) {
                 // other than the first 6, the rest need to reset their offset
                 // 16 = return address + saved %rbp
             } else {
-                varpair.second.addr_offset = 16 + (number_of_parameter - 6 - 1) * 4;
+                f1.variables.at(varpair.first).addr_offset = 16 + (number_of_parameter - 6 - 1) * 4;
+                // since these vars get moved to above rbp, next avalible spot needs to move up as well
+                addr_offset += 4;
             }
         }
     }
@@ -1229,7 +1269,7 @@ void assignment_handler(string &s, Function &f1)
 
 int main() {
     int max_len = 0;
-    vector<string> source = loadFile("test2.cpp", max_len);
+    vector<string> source = loadFile("test1.cpp", max_len);
 
     function_handler(source, 0, max_len);
 
