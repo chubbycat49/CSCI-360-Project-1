@@ -956,7 +956,8 @@ void arithmetic_handler(string &s, Function &f1)
                     move_arr_val_into_register(l_val, "%eax", f1);
                     move_arr_val_into_register(r_val, "%edx", f1);
 
-                    f1.assembly_instructions.push_back("subl %edx, %eax");
+                    f1.assembly_instructions.push_back("subl %eax, %edx");
+                    f1.assembly_instructions.push_back("movl %edx, %eax");
                 }
                 else if (is_array_accessor(l_val))
                 {
@@ -982,17 +983,18 @@ void arithmetic_handler(string &s, Function &f1)
                     if (is_int(l_val))
                     {
                         // num arr
-                        move_arr_val_into_register(r_val, "%edx", f1);
-                        move_immediate_val_into_register(l_val, "%eax", f1);
+                        move_arr_val_into_register(r_val, "%eax", f1);
+                        move_immediate_val_into_register(l_val, "%edx", f1);
                     }
                     else
                     {
                         // var arr
-                        move_arr_val_into_register(r_val, "%edx", f1);
-                        move_var_val_into_register(l_val, "%eax", f1);
+                        move_arr_val_into_register(r_val, "%eax", f1);
+                        move_var_val_into_register(l_val, "%edx", f1);
                     }
 
-                    f1.assembly_instructions.push_back("subl %edx, %eax");
+                    f1.assembly_instructions.push_back("subl %eax, %edx");
+                    f1.assembly_instructions.push_back("movl %edx, %eax");
                 }
             }
             else if (is_int(l_val) || is_int(r_val))
@@ -1033,8 +1035,8 @@ void arithmetic_handler(string &s, Function &f1)
                 if (is_array_accessor(l_val) && is_array_accessor(r_val))
                 {
                     // arr arr
-                    move_arr_val_into_register(l_val, "%eax", f1);
-                    move_arr_val_into_register(r_val, "%edx", f1);
+                    move_arr_val_into_register(l_val, "%edx", f1);
+                    move_arr_val_into_register(r_val, "%eax", f1);
 
                     f1.assembly_instructions.push_back("imull %edx, %eax");
                 }
@@ -1045,15 +1047,14 @@ void arithmetic_handler(string &s, Function &f1)
                         // arr num
                         move_arr_val_into_register(l_val, "%eax", f1);
 
-                        f1.assembly_instructions.push_back("imull $" + r_val + ", %eax");
+                        f1.assembly_instructions.push_back("imull $" + r_val + ", %eax, %eax");
                     }
                     else
                     {
                         // arr var
                         move_arr_val_into_register(l_val, "%eax", f1);
-                        move_var_val_into_register(r_val, "%edx", f1);
 
-                        f1.assembly_instructions.push_back("imull %edx, %eax");
+                        f1.assembly_instructions.push_back("imull " + to_string(f1.variables.at(r_val).addr_offset) + "(%rbp), %eax");
                     }
                 }
                 else if (is_array_accessor(r_val))
@@ -1063,15 +1064,14 @@ void arithmetic_handler(string &s, Function &f1)
                         // num arr
                         move_arr_val_into_register(r_val, "%eax", f1);
 
-                        f1.assembly_instructions.push_back("imull $" + l_val + ", %eax");
+                        f1.assembly_instructions.push_back("imull $" + l_val + ", %eax, %eax");
                     }
                     else
                     {
                         // var arr
                         move_arr_val_into_register(r_val, "%eax", f1);
-                        move_var_val_into_register(l_val, "%edx", f1);
 
-                        f1.assembly_instructions.push_back("imull %edx, %eax");
+                        f1.assembly_instructions.push_back("imull %edx, " + to_string(f1.variables.at(l_val).addr_offset) + "(%rbp)");
                     }
                 }
             }
@@ -1088,14 +1088,14 @@ void arithmetic_handler(string &s, Function &f1)
                     // num - var
                     move_var_val_into_register(r_val, "%eax", f1);
 
-                    f1.assembly_instructions.push_back("imull $" + l_val + ", %eax");
+                    f1.assembly_instructions.push_back("imull $" + l_val + ", %eax, %eax");
                 }
                 else if (is_int(r_val))
                 {
                     // var - num
                     move_var_val_into_register(l_val, "%eax", f1);
 
-                    f1.assembly_instructions.push_back("imull $" + r_val + ", %eax");
+                    f1.assembly_instructions.push_back("imull $" + r_val + ", %eax, %eax");
                 }
             }
             else
@@ -1158,14 +1158,14 @@ int main() {
 
     function_handler(source, 0, max_len);
 
-    view_function(functions[0]);
+    // view_function(functions[0]);
 
-    // ofstream fileOUT("out.txt", ios::out | ios::trunc);
-    // fileOUT.close();
+    ofstream fileOUT("out.txt", ios::out | ios::trunc);
+    fileOUT.close();
 
-    // for (Function f : functions){
-    //   writeFile("out.txt", f.assembly_instructions, f.function_name);
-    // }
+    for (Function f : functions){
+      writeFile("out.txt", f.assembly_instructions, f.function_name);
+    }
 
     return 0;
 }
