@@ -12,4 +12,5 @@ int main(){
 		a[min_inx] = a[i];
 		a[i] = temp;
 	}
+	return 0;
 }
