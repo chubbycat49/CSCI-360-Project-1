@@ -29,7 +29,7 @@ map<string,Variable> variable_handler(string input_str, int idk, int& addr_offse
             string name = array_name + "[" + to_string(i) + "]";
             int arr_addr_offset = addr_offset - (i * 4);
 
-            Variable var(name, "int", 0, arr_addr_offset);
+            Variable var(name, "intptr", 0, arr_addr_offset);
             out.insert(pair<string, Variable>(name, var));
         }
         addr_offset -= (array_size * 4);
@@ -1032,6 +1032,9 @@ int main() {
     vector<string> source = loadFile("test1.cpp", max_len);
 
     function_handler(source, 0, max_len);
+
+    ofstream fileOUT("out.txt", ios::out | ios::trunc);
+    fileOUT.close();
 
     for (Function f : functions){
       writeFile("out.txt", f.assembly_instructions);
