@@ -8,16 +8,24 @@ int label_num = 2;
 string register_for_argument_32[6] = {"edi", "esi", "edx", "ecx", "r8d", "r9d"};
 string register_for_argument_64[6] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-void view_function(Function &f1)
+void view_var(string s)
+{
+    cout << s << "\t" << s.size() << endl;
+}
+
+void view_function(Function f1, bool show_vars)
 {
     for (auto x : f1.assembly_instructions)
     {
         cout << x << endl;
     }
-
-    for (auto const &x : f1.variables)
+    
+    if (show_vars) 
     {
-        cout << x.second.type << " " << x.first << " " << x.second.value << " " << x.second.addr_offset << endl;
+        for (auto const &x : f1.variables)
+        {
+            cout << x.second.type << " " << x.first << " " << x.second.value << " " << x.second.addr_offset << endl;
+        }
     }
 }
 
@@ -210,7 +218,7 @@ void store_reg_val(const string dest, const string reg, Function &f1)
     Helper function to handle code like thing1 comparator thing2
     Pushes required assembly instructions for comparison
 */
-void comparison_handler(string &s, Function &f1, bool jump_if_false = true)
+void comparison_handler(string &s, Function &f1, bool jump_if_false)
 {
     // mapping of all comparators and their associated assembly command
     map<string, string> comparators_jump_if_true;
@@ -433,6 +441,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
     if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1) {
+        f1.assembly_instructions.push_back("#" + source[loc]);
         variable_offset_allocation(source, loc, f1, addr_offset);
         loc++;
     }
@@ -498,19 +507,19 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
 */
 void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset)
 {
-    if (is_array_accessor(source[loc]))
+    const string var_type = "int";
+
+    if (is_array_accessor(split(source[loc], " = ")[0]))
     {
-        /*
-            Split line by = and then by the [] to parse the name, size and values
-        */
-        string var_type = "int";
-        auto tokens = split(source[loc].substr(source[loc].find(" ") + 1), " = "); // only work with part after "int "
+        auto tokens = split(source[loc], " = ");
         trim_vector(tokens);
         remove_ending_semicolon_vector(tokens);
 
-        auto array_name = tokens[0];
-        auto temp = split(array_name, "\\["); // [ needs to be escaped with \ and then that \ needs to be escaped for C++ complier
-        array_name = temp[0];
+        string dest = split(tokens[0], " ")[1];
+        string src = tokens[1];
+
+        auto temp = split(dest, "\\["); // [ needs to be escaped with \ and then that \ needs to be escaped for C++ complier
+        string array_name = temp[0];
 
         temp[1].pop_back();
         int array_size = stoi(temp[1]);
@@ -532,24 +541,59 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
     }
     else
     {
-
         /*
-            Split variables by , and then by space to parse the name and value
+            int a = 0; b = 1; c = 2; d = 3;
         */
-        string var_type = "int";
-        auto tokens = split(source[loc].substr(source[loc].find(" ") + 1), ","); // only work with part after "int "
-        trim_vector(tokens);
-        remove_ending_semicolon_vector(tokens);
+        auto var_tokens = split(source[loc].substr(source[loc].find(" ") + 1), ",");
+        trim_vector(var_tokens);
+        remove_ending_semicolon_vector(var_tokens);
 
-        for (auto &item : tokens)
+        for (string s : var_tokens)
         {
-            auto var_tokens = split(item, " ");
-            string var_name = var_tokens[0];
-            int var_value = stoi(var_tokens[2]);
+            auto tokens = split(s, " = ");
+            trim_vector(tokens);
+            remove_ending_semicolon_vector(tokens);
+
+            string var_name = tokens[0];
+            string var_value_str = tokens[1];
+            int var_value = is_int(var_value_str) ? stoi(var_value_str) : 0;
+
+            string src = "%eax";
+
+            if (is_arithmetic_line(var_value_str))
+            {
+                /*
+                    var = arithmetic
+                */
+                arithmetic_handler(s, f1, false);
+            }
+            else if (is_array_accessor(var_value_str))
+            {
+                /*
+                    var = arr[i], var = arr[0]
+                */
+                move_arr_val_into_register(var_value_str, "%eax", f1);
+            }
+            else if (is_int(var_value_str))
+            {
+                /*
+                    var = num
+                */
+                src = "$" + var_value_str;
+            }
+            else
+            {
+                /*
+                    var = var
+                */
+                move_var_val_into_register(var_value_str, "%eax", f1);
+            }
+
+            f1.assembly_instructions.push_back("movl " + src + ", " + to_string(addr_offset) + "(%rbp)");
 
             Variable var(var_name, var_type, var_value, addr_offset);
             f1.variables.insert(pair<string, Variable>(var_name, var));
-            f1.assembly_instructions.push_back("movl $" + var_tokens[2] + ", " + to_string(addr_offset) + "(%rbp)");
+
             addr_offset -= 4;
         }
     }
@@ -793,7 +837,7 @@ void function_call_handler(string input_str, Function &f1) {
 /*
     Handle arithmetic statements
 */
-void arithmetic_handler(string &s, Function &f1)
+void arithmetic_handler(string &s, Function &f1, bool store_result)
 {
     if (is_substr(s, "++"))
     {
@@ -1107,18 +1151,21 @@ void arithmetic_handler(string &s, Function &f1)
             }
         }
 
-        string reg;
-        if (is_array_accessor(dest))
+        if (store_result)
         {
-            // add move to edx line
-            f1.assembly_instructions.push_back("movl %eax, %edx");
-            reg = "%edx";
+            string reg;
+            if (is_array_accessor(dest))
+            {
+                // add move to edx line
+                f1.assembly_instructions.push_back("movl %eax, %edx");
+                reg = "%edx";
+            }
+            else
+            {
+                reg = "%eax";
+            }
+            store_reg_val(dest, reg, f1);
         }
-        else
-        {
-            reg = "%eax";
-        }
-        store_reg_val(dest, reg, f1);
     }
 }
 
@@ -1133,32 +1180,60 @@ void assignment_handler(string &s, Function &f1)
     string dest = tokens[0];
     string src = tokens[1];
 
-    if (is_int(src))
-    {
-        // a = 0;
-        store_immedaite_val(dest, src, f1);
-    }
-    else if (is_array_accessor(src))
-    {
-        // a = c[1], a = c[x]
-        move_arr_val_into_register(src, "%eax", f1);
-        store_reg_val(dest, "%eax", f1);
-    }
-    else
-    {
-        // a = c
-        move_var_val_into_register(src, "%eax", f1);
-        store_reg_val(dest, "%eax", f1);
+    if (is_array_accessor_dynamic(dest)) {
+        /*
+            arr[i] = var
+            arr[i] = num
+        */
+        string arr_name = dest.substr(0, dest.find("["));
+        string arr_index = substr_between_indices(dest, dest.find("[") + 1, dest.find("]"));
+
+       if (is_int(src))
+       {
+            // arr[i] = 0
+            store_immedaite_val(dest, src, f1);
+
+       }
+       else if (is_array_accessor(src))
+       {
+            // arr[i] = d[0], arr[i] = d[b]
+            move_arr_val_into_register(src, "%edx", f1);
+            store_reg_val(dest, "%edx", f1);
+       }
+       else
+       {
+            // arr[i] = b
+            move_var_val_into_register(src, "%edx", f1);
+            store_reg_val(dest, "%edx", f1);
+       }
+    } else {
+        if (is_int(src))
+        {
+            // a = 0, arr[0] = 0
+            store_immedaite_val(dest, src, f1);
+        }
+        else if (is_array_accessor(src))
+        {
+            // a = c[1], a = c[x], arr[0] = c[1], arr[0] = c[x]
+            move_arr_val_into_register(src, "%eax", f1);
+            store_reg_val(dest, "%eax", f1);
+        }
+        else
+        {
+            // a = c, arr[0] = c
+            move_var_val_into_register(src, "%eax", f1);
+            store_reg_val(dest, "%eax", f1);
+        }
     }
 }
 
 int main() {
     int max_len = 0;
-    vector<string> source = loadFile("test3.cpp", max_len);
+    vector<string> source = loadFile("test2.cpp", max_len);
 
     function_handler(source, 0, max_len);
 
-    // view_function(functions[0]);
+    // view_function(functions[0], true);
 
     ofstream fileOUT("out.txt", ios::out | ios::trunc);
     fileOUT.close();
