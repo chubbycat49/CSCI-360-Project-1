@@ -19,7 +19,7 @@ void move_var_val_into_register(const string s, const string reg, Function &f1);
 void move_arr_val_into_register(const string s, const string reg, Function &f1);
 void store_immedaite_val(const string dest, const string val, Function &f1);
 void store_reg_val(const string dest, const string reg, Function &f1);
-void comparison_handler(string &s, Function &f1, int &loc);
+void comparison_handler(string &s, Function &f1, bool jump_if_false);
 
 void function_handler(vector<string> source, int loc, int max_len);
 void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset);

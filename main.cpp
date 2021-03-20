@@ -197,16 +197,26 @@ void store_reg_val(const string dest, const string reg, Function &f1)
     Helper function to handle code like thing1 comparator thing2
     Pushes required assembly instructions for comparison
 */
-void comparison_handler(string &s, Function &f1, int &loc)
+void comparison_handler(string &s, Function &f1, bool jump_if_false = true)
 {
     // mapping of all comparators and their associated assembly command
-    map<string, string> comparators;
-    comparators.insert(pair<string, string>("<", "jge"));
-    comparators.insert(pair<string, string>(">", "jle"));
-    comparators.insert(pair<string, string>("<=", "jg"));
-    comparators.insert(pair<string, string>(">=", "jl"));
-    comparators.insert(pair<string, string>("==", "jne"));
-    comparators.insert(pair<string, string>("!=", "je"));
+    map<string, string> comparators_jump_if_true;
+    comparators_jump_if_true.insert(pair<string, string>("<", "jge"));
+    comparators_jump_if_true.insert(pair<string, string>(">", "jle"));
+    comparators_jump_if_true.insert(pair<string, string>("<=", "jg"));
+    comparators_jump_if_true.insert(pair<string, string>(">=", "jl"));
+    comparators_jump_if_true.insert(pair<string, string>("==", "jne"));
+    comparators_jump_if_true.insert(pair<string, string>("!=", "je"));
+
+    map<string, string> comparators_jump_if_false;
+    comparators_jump_if_false.insert(pair<string, string>("<", "jle"));
+    comparators_jump_if_false.insert(pair<string, string>(">", "jge"));
+    comparators_jump_if_false.insert(pair<string, string>("<=", "jl"));
+    comparators_jump_if_false.insert(pair<string, string>(">=", "jg"));
+    comparators_jump_if_false.insert(pair<string, string>("==", "je"));
+    comparators_jump_if_false.insert(pair<string, string>("!=", "jne"));
+
+    auto comparators = jump_if_false ? comparators_jump_if_true : comparators_jump_if_false;
 
     auto tokens = split(s, " ");
     trim_vector(tokens);
@@ -409,8 +419,6 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
-    // cout << endl << source[loc] << endl;
-
     if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1) {
         variable_offset_allocation(source, loc, f1, addr_offset);
         loc++;
@@ -457,7 +465,7 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     /*
         code line is an assignment instruction
     */
-    else if (is_substr(source[loc], "=")){
+    else if (is_substr(source[loc], " = ")){
         f1.assembly_instructions.push_back("#" + source[loc]);
         assignment_handler(source[loc], f1);
         loc++;
@@ -491,7 +499,8 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
         auto temp = split(array_name, "\\["); // [ needs to be escaped with \ and then that \ needs to be escaped for C++ complier
         array_name = temp[0];
 
-        int array_size = stoi(temp[1].substr(0, temp[1].size() - 1));
+        temp[1].pop_back();
+        int array_size = stoi(temp[1]);
 
         auto array_values_str = tokens[1];
         auto array_values = split(array_values_str.substr(1, array_values_str.size() - 2), ", "); // removes { and } and splits into int values
@@ -539,7 +548,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
 void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset)
 {
     string comparison = substr_between_indices(source[loc], source[loc].find("(") + 1, source[loc].find(")"));
-    comparison_handler(comparison, f1, loc);
+    comparison_handler(comparison, f1);
     loc++;
 
     while (source[loc] != "}")
@@ -557,7 +566,35 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
     Handle for statements
 */
 void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset) {
+    string loop_label = ".L" + to_string(label_num++);
+    string end_label = ".L" + to_string(label_num++);
 
+    string line = source[loc];
+    line = substr_between_indices(line, line.find("(")+1, line.find(")"));
+    vector<string> tokens = split(line, "; ");
+
+    vector<string> temp;
+    temp.push_back(tokens[0]);
+    int loc_temp = 0;
+    variable_offset_allocation(temp, loc_temp, f1, addr_offset);
+    f1.assembly_instructions.push_back("jmp " + end_label);
+    f1.assembly_instructions.push_back(loop_label);
+
+    loc++;
+    while(source[loc] != "}"){
+        common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+    }
+
+    arithmetic_handler(tokens[2], f1);
+    f1.assembly_instructions.push_back(end_label);
+
+    // jmp instruction from comparison jumps to the wrong place
+    // need to change it to loop_label
+    comparison_handler(tokens[1], f1, false);
+    f1.assembly_instructions.back().replace(f1.assembly_instructions.back().find("."), 3, loop_label);
+
+    f1.assembly_instructions.push_back("# }");
+    loc++;
 }
 
 /*
@@ -571,10 +608,6 @@ void return_handler(string source, Function &f1) {
   if (source[6] != ';'){
     string rvalue = source.substr(7);
     rvalue.pop_back();
-
-    // for (auto c : f1.variables)
-    //   cout << c.first << " ";
-    // cout << "rval: " << rvalue;
 
     if(f1.variables.count(rvalue) > 0)
     {
@@ -1053,7 +1086,7 @@ void assignment_handler(string &s, Function &f1)
 
 int main() {
     int max_len = 0;
-    vector<string> source = loadFile("test1.cpp", max_len);
+    vector<string> source = loadFile("test2.cpp", max_len);
 
     function_handler(source, 0, max_len);
 
@@ -1061,7 +1094,7 @@ int main() {
     fileOUT.close();
 
     for (Function f : functions){
-      writeFile("out.txt", f.assembly_instructions);
+      writeFile("out.txt", f.assembly_instructions, f.function_name);
     }
 
     return 0;

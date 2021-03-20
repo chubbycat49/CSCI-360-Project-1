@@ -8,4 +8,4 @@ kuntest: Function.h Variable.h util.h kuntest.cpp
 	g++ -std=c++11 util.cpp kuntest.cpp -o kuntest
 
 clean:
-	rm -f main test kuntest
+	rm -f main test kuntest out.txt
