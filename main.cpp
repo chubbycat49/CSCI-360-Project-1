@@ -656,11 +656,11 @@ void function_call_handler(string input_str, Function &f1) {
       }
       else if (i == 0){ // We put the first param in %eax/%rax for now
         if (a.type == "int"){
-          f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp) ", "%eax", 32));
+          f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp)", "%eax", 32));
           firstparam = "%eax";
         }
         else{
-          f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp) ", "%rax", 64));
+          f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp)", "%rax", 64));
           firstparam = "%rax";
         }
       }
