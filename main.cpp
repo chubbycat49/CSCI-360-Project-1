@@ -364,7 +364,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
                 // other than the first 6, the rest need to reset their offset
                 // 16 = return address + saved %rbp
             } else {
-                var.addr_offset = 16 + (number_of_parameter - 6 - 1) * 8;
+                varpair.second.addr_offset = 16 + (number_of_parameter - 6 - 1) * 4;
             }
         }
     }
@@ -388,7 +388,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
     }
 
     if (f1.is_leaf_function == false && f1.variables.size() > 0) {
-        int last_offset = 0 - f1.variables.end()->second.addr_offset;
+        int last_offset = 0 - (--(f1.variables.end()))->second.addr_offset;
         // if last offset is not divisible by 16, then do 16 bytes address alignment: multiples of 16
         if (last_offset % 16 != 0) {
             last_offset = ceil((float)last_offset / 16) * 16;
@@ -640,6 +640,7 @@ void function_call_handler(string input_str, Function &f1) {
   // cout << "Tokens: ";
   // for (auto c : tokens)
   //   cout << c << " " << c.size() << " ";
+  vector<string> extraArgs;
 
   i = -1;
   for (auto p : tokens){
@@ -667,9 +668,10 @@ void function_call_handler(string input_str, Function &f1) {
       }
       else{
         // After the first 6 arguments are placed in registers, the rest are put on the stack
-        f1.assembly_instructions.push_back(add_mov_instruction(
-          to_string(a.addr_offset) + "(%rbp)", "%rdi", 64));
-        f1.assembly_instructions.push_back("pushq %rdi");
+        // f1.assembly_instructions.push_back(add_mov_instruction(
+        //   to_string(a.addr_offset) + "(%rbp)", "%rdi", 64));
+        // f1.assembly_instructions.push_back("pushq %rdi");
+        extraArgs.insert(extraArgs.begin(),p);
       }
     }
 
@@ -686,8 +688,9 @@ void function_call_handler(string input_str, Function &f1) {
       }
       else{
         // After the first 6 arguments are placed in registers, the rest are put on the stack
-        f1.assembly_instructions.push_back("leaq " + to_string(a.addr_offset) + "(%rbp), " + "%rdi");
-        f1.assembly_instructions.push_back("pushq %rdi");
+        // f1.assembly_instructions.push_back("leaq " + to_string(a.addr_offset) + "(%rbp), " + "%rdi");
+        // f1.assembly_instructions.push_back("pushq %rdi");
+        extraArgs.insert(extraArgs.begin(),p + "[0]");
       }
     }
 
@@ -700,7 +703,27 @@ void function_call_handler(string input_str, Function &f1) {
         firstparam = "%eax";
       }
       else
-        f1.assembly_instructions.push_back("pushq $" + p);
+        // f1.assembly_instructions.push_back("pushq $" + p);
+        extraArgs.insert(extraArgs.begin(),"$" + p);
+    }
+  }
+
+  /* Second loop for extra arguments */
+  for (string ext : extraArgs)
+  {
+    cout << ext << endl;
+    Variable a = f1.variables.at(ext);
+    if (f1.variables.count(ext) > 0){
+      f1.assembly_instructions.push_back(add_mov_instruction(
+        to_string(a.addr_offset) + "(%rbp)", "%rdi", 64));
+      f1.assembly_instructions.push_back("pushq %rdi");
+    }
+    else if (f1.variables.count(ext + "[0]") > 0){
+      f1.assembly_instructions.push_back("leaq " + to_string(a.addr_offset) + "(%rbp), " + "%rdi");
+      f1.assembly_instructions.push_back("pushq %rdi");
+    }
+    else {
+      f1.assembly_instructions.push_back("pushq $" + ext);
     }
   }
 
