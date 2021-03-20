@@ -7,6 +7,7 @@ using namespace std;
 void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset);
 void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset);
 void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset);
+void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset);
 void arithmetic_handler(string &s, Function &f1);
 void assignment_handler(string &s, Function &f1);
 
@@ -15,11 +16,27 @@ void move_var_val_into_register(const string s, const string reg, Function &f1);
 void move_arr_val_into_register(const string s, const string reg, Function &f1);
 void store_immedaite_val(const string dest, const string val, Function &f1);
 void store_reg_val(const string dest, const string reg, Function &f1);
-void comparison_handler(string &s, Function &f1, int &loc);
+void comparison_handler(string &s, Function &f1, bool jump_if_true);
 bool is_arithmetic_line(const string s);
 bool is_function_call(string line);
 
+void view_function(Function &f1);
+
 int label_num = 2;
+
+
+void view_function(Function &f1)
+{
+    for (auto x : f1.assembly_instructions)
+    {
+        cout << x << endl;
+    }
+
+    for (auto const &x : f1.variables)
+    {
+        cout << x.second.type << " " << x.first << " " << x.second.value << " " << x.second.addr_offset << endl;
+    }
+}
 
 /*
     Helper function to move immediate values into registers
@@ -132,16 +149,26 @@ void store_reg_val(const string dest, const string reg, Function &f1)
     Helper function to handle code like thing1 comparator thing2
     Pushes required assembly instructions for comparison
 */
-void comparison_handler(string &s, Function &f1, int &loc)
+void comparison_handler(string &s, Function &f1, bool jump_if_false = true)
 {
     // mapping of all comparators and their associated assembly command
-    map<string, string> comparators;
-    comparators.insert(pair<string, string>("<", "jge"));
-    comparators.insert(pair<string, string>(">", "jle"));
-    comparators.insert(pair<string, string>("<=", "jg"));
-    comparators.insert(pair<string, string>(">=", "jl"));
-    comparators.insert(pair<string, string>("==", "jne"));
-    comparators.insert(pair<string, string>("!=", "je"));
+    map<string, string> comparators_jump_if_true;
+    comparators_jump_if_true.insert(pair<string, string>("<", "jge"));
+    comparators_jump_if_true.insert(pair<string, string>(">", "jle"));
+    comparators_jump_if_true.insert(pair<string, string>("<=", "jg"));
+    comparators_jump_if_true.insert(pair<string, string>(">=", "jl"));
+    comparators_jump_if_true.insert(pair<string, string>("==", "jne"));
+    comparators_jump_if_true.insert(pair<string, string>("!=", "je"));
+
+    map<string, string> comparators_jump_if_false;
+    comparators_jump_if_false.insert(pair<string, string>("<", "jle"));
+    comparators_jump_if_false.insert(pair<string, string>(">", "jge"));
+    comparators_jump_if_false.insert(pair<string, string>("<=", "jl"));
+    comparators_jump_if_false.insert(pair<string, string>(">=", "jg"));
+    comparators_jump_if_false.insert(pair<string, string>("==", "je"));
+    comparators_jump_if_false.insert(pair<string, string>("!=", "jne"));
+
+    auto comparators = jump_if_false ? comparators_jump_if_true : comparators_jump_if_false;
 
     auto tokens = split(s, " ");
     trim_vector(tokens);
@@ -283,6 +310,7 @@ bool is_function_call(string line)
 */
 void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset)
 {
+    // cout << source[loc] << endl;
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
@@ -299,6 +327,10 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         f1.assembly_instructions.push_back("# " + source[loc]);
         IF_statement_handler(source, loc, max_len, f1, addr_offset);
     }
+    else if (source[loc].find("for") == 0) {
+        f1.assembly_instructions.push_back("#" + source[loc]);
+        FOR_statement_handler(source, loc, max_len, f1, addr_offset);
+    }
     /*
         code line has +, -, * and is an arithmetic instruction
     */
@@ -308,10 +340,12 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
         arithmetic_handler(source[loc], f1);
         loc++;
     }
-    else
+    else if (is_substr(source[loc], " = "))
     {
         f1.assembly_instructions.push_back("#" + source[loc]);
         assignment_handler(source[loc], f1);
+        loc++;
+    } else {
         loc++;
     }
 }
@@ -385,7 +419,7 @@ void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, 
 void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset)
 {
     string comparison = substr_between_indices(source[loc], source[loc].find("(") + 1, source[loc].find(")"));
-    comparison_handler(comparison, f1, loc);
+    comparison_handler(comparison, f1);
     loc++;
 
     while (source[loc] != "}")
@@ -396,6 +430,37 @@ void IF_statement_handler(vector<string> &source, int &loc, int max_len, Functio
     f1.assembly_instructions.push_back("# }");
     f1.assembly_instructions.push_back(".L" + to_string(label_num) + ":");
     label_num++;
+    loc++;
+}
+
+/*
+    Handle for statements
+*/
+void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset) {
+    string loop_label = ".L" + to_string(label_num++);
+    string end_label = ".L" + to_string(label_num++);
+
+    string line = source[loc];
+    line = substr_between_indices(line, line.find("(")+1, line.find(")"));
+    vector<string> tokens = split(line, "; ");
+
+    vector<string> temp;
+    temp.push_back(tokens[0]);
+    int loc_temp = 0;
+    variable_offset_allocation(temp, loc_temp, f1, addr_offset);
+    f1.assembly_instructions.push_back("jmp " + end_label);
+    f1.assembly_instructions.push_back(loop_label);
+
+    loc++;
+    while(source[loc] != "}"){
+        common_instruction_handler_dispatcher(source, loc, max_len, f1, addr_offset);
+    }
+
+    arithmetic_handler(tokens[2], f1);
+
+    f1.assembly_instructions.push_back(end_label);
+
+    comparison_handler(tokens[1], f1, false);
     loc++;
 }
 
@@ -714,19 +779,6 @@ void intialize_function(Function &f1)
 {
     f1.return_type = "int";
     f1.function_name = "test";
-}
-
-void view_function(Function &f1)
-{
-    for (auto x : f1.assembly_instructions)
-    {
-        cout << x << endl;
-    }
-
-    for (auto const &x : f1.variables)
-    {
-        cout << x.second.type << " " << x.first << " " << x.second.value << " " << x.second.addr_offset << endl;
-    }
 }
 
 int main()
