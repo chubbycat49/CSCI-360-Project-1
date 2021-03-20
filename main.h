@@ -10,6 +10,7 @@
 
 using namespace std;
 
+void view_function(Function &f1);
 map<Variable,int> variable_handler();
 string add_mov_instruction(string src, string dest, int size);
 bool is_function_call(string line);
