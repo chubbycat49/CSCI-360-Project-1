@@ -578,10 +578,11 @@ void return_handler(string source, Function &f1) {
 
     if(f1.variables.count(rvalue) > 0)
     {
+      Variable a = f1.variables.at(rvalue);
       if (f1.variables.at(rvalue).type == "int")
-        f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 32));
+        f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp)", "%eax", 32));
       else
-        f1.assembly_instructions.push_back(add_mov_instruction(rvalue, "%eax", 64));
+        f1.assembly_instructions.push_back(add_mov_instruction(to_string(a.addr_offset) + "(%rbp)", "%rax", 64));
     }
   }
 
