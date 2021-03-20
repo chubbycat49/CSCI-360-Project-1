@@ -351,6 +351,10 @@ void function_handler(vector<string> source, int loc, int max_len) {
         int number_of_parameter = 0;
         for (auto &varpair : f1.variables) {
             Variable var = varpair.second;
+
+            if (var.name.size() > 1 && var.name.substr(1) != "[0]" && number_of_parameter <=6)
+              continue; // i.e., 'e[1]' doesn't need to be dealt with separately.
+
             number_of_parameter++;
             // First 6 parameters <- registers
             if (number_of_parameter <= 6) {
@@ -409,7 +413,6 @@ void common_instruction_handler_dispatcher(vector<string> source, int &loc, int 
     /*
         code line starts with variable declaration keyword "int" and ends with semicolon
     */
-    // cout << endl << source[loc] << endl;
 
     if (source[loc].find("int") == 0 && source[loc].find(";") == source[loc].length() - 1) {
         variable_offset_allocation(source, loc, f1, addr_offset);
@@ -572,10 +575,6 @@ void return_handler(string source, Function &f1) {
     string rvalue = source.substr(7);
     rvalue.pop_back();
 
-    // for (auto c : f1.variables)
-    //   cout << c.first << " ";
-    // cout << "rval: " << rvalue;
-
     if(f1.variables.count(rvalue) > 0)
     {
       Variable a = f1.variables.at(rvalue);
@@ -621,12 +620,9 @@ void function_call_handler(string input_str, Function &f1) {
 
   // Get name of function and parameter list
   std::string name = callstr.substr(0, callstr.find("("));
-  // cout << "Name: " << name << endl;
   std::string params = callstr.substr(callstr.find("(") + 1);
-  // cout << "Params: " << params << endl;
   params.pop_back(); params.pop_back(); // Get rid of ");"
-  // cout << "Popped params: " << params << endl;
-  // cout << "Params: " << params << " " << params.size();
+
   // Place first 6 parameters onto stack in reverse order
   // The first parameter gets saved away in %eax so %rdi can be used to push
 
@@ -637,9 +633,6 @@ void function_call_handler(string input_str, Function &f1) {
     paramsv.push_back(p);
   }
 
-  // cout << "Tokens: ";
-  // for (auto c : tokens)
-  //   cout << c << " " << c.size() << " ";
   vector<string> extraArgs;
 
   i = -1;
@@ -711,7 +704,6 @@ void function_call_handler(string input_str, Function &f1) {
   /* Second loop for extra arguments */
   for (string ext : extraArgs)
   {
-    cout << ext << endl;
     Variable a = f1.variables.at(ext);
     if (f1.variables.count(ext) > 0){
       f1.assembly_instructions.push_back(add_mov_instruction(
