@@ -22,7 +22,7 @@ The program will output a out.txt file containing the assembly output for the gi
 This class represents a variable. It contains the information of a variable such as the type, name, offset and value.
 
 #### Function.h
-This class represents a function. It contains the information of a function such as the return type and name. It holds the variables of a function in a `map<string, variable>`. Aswell as a `bool` to know if the function is a leaf function or not.
+This class represents a function. It contains the information of a function such as the return type and name. It holds the variables of a function in a `map<string, variable>`. Aswell as a `bool` to indicate if the function is a leaf function.
 
 #### util.h
 This class contains helper functions. It contains functionality to parse source code lines for translation. Functions to indicate whether an instruction accesses array elements. And functions to read and write .txt files.
@@ -33,7 +33,7 @@ This class contains the core functions for the program.
 **main.h class interface provides the following functionality:**
 
 `void common_instruction_handler_dispatcher(vector<string> source, int &loc, int max_len, Function &f1, int &addr_offset)`
-* Function to figure out what kind of instruction the current source code line is and call the appropriate handler for translation.
+* Function to figure out what kind of instruction the current source code line is and call the appropriate function for the translation.
 
 `void function_handler(vector<string> source, int loc, int max_len)`
 * Function to create Function object and makes the stack for the function. It retrieves function name, return type and the parameters for the function.
@@ -45,7 +45,7 @@ This class contains the core functions for the program.
 * Function to translate variable declaration instructions.
 
 `void assignment_handler(string &s, Function &f1)`
-* Function to translate assignment instructions for variables and array values.
+* Function to translate assignment instructions for variable and array values.
 
 `void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset)`
 * Function to translate `if()` instructions.
