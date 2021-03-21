@@ -28,7 +28,7 @@ This class represents a function. It contains the information of a function such
 This class contains helper functions. It contains functionality to parse source code lines for translation. Functions to indicate whether an instruction accesses array elements. And functions to read and write .txt files.
 
 #### main.h
-This class contains the functions for the core of the program. 
+This class contains the core functions for the program. 
 
 **main.h class interface provides the following functionality:**
 
