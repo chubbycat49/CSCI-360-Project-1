@@ -1,9 +1,10 @@
 #ifndef MAIN_H
 #define MAIN_H
 
-#include <vector>
-#include <string>
 #include <map>
+#include <string>
+#include <vector>
+
 #include "Function.h"
 #include "Variable.h"
 #include "util.h"
@@ -12,8 +13,8 @@ using namespace std;
 
 void view_var(string s);
 void view_function(Function f1, bool show_vars);
-map<string,Variable> variable_handler(string input_str, int& addr_offset);
-map<string,Variable> actual_function_params(map<string, Variable> vars);
+map<string, Variable> variable_handler(string input_str, int &addr_offset);
+map<string, Variable> actual_function_params(map<string, Variable> vars);
 string add_mov_instruction(string src, string dest, int size);
 bool is_function_call(string line);
 bool is_arithmetic_line(const string s);

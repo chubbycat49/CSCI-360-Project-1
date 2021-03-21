@@ -1,11 +1,11 @@
 #ifndef UTIL_H
 #define UTIL_H
 
-#include <vector>
-#include <string>
-#include <regex>
 #include <fstream>
 #include <iostream>
+#include <regex>
+#include <string>
+#include <vector>
 
 using namespace std;
 

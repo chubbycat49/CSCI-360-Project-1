@@ -1431,7 +1431,7 @@ void assignment_handler(string &s, Function &f1) {
     }
 }
 
-int main(int argc, char* argv[]) {
+int main(int argc, char *argv[]) {
     if (argc != 3) {
         cout << "Please proved an input file and output file name. Exitting..." << endl;
         return 0;
