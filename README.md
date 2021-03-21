@@ -39,5 +39,28 @@ This class contains the functions for the core of the program.
 * Function to create Function object and makes the stack for the function. It retrieves function name, return type and the parameters for the function.
 
 `void function_call_handler(string input_str, Function &f1)`
+* Function to translate instructions that call a function with passed parameters.
+
+`void variable_offset_allocation(vector<string> &source, int &loc, Function &f1, int &addr_offset)`
+* Function to translate variable declaration instructions.
+
+`void assignment_handler(string &s, Function &f1)`
+* Function to translate assignment instructions for variables and array values.
+
+`void IF_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset)`
+* Function to translate `if()` instructions.
+
+`void FOR_statement_handler(vector<string> &source, int &loc, int max_len, Function &f1, int &addr_offset)`
+* Function to translate `for()` instructions.
+
+`void return_handler(string source, Function &f1)`
+* Function to translate `return` statements in a function.
+
+`void arithmetic_handler(string &s, Function &f1, bool store_result = true)`
+* Function to translate arithmetic instructions for addition subtraction and multiplication.
+
+
+
+
 
 
