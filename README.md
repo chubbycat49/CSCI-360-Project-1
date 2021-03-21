@@ -12,9 +12,9 @@ make
 ```
 The compiled exe can take one argument for the source.txt file to be translated to assembly.
 ```
-./main <source file name>
+./main <source file name> <output file name>
 ```
-The program will output a out.txt file containing the assembly output for the given .txt file.
+The program will output a .txt file containing the assembly output for the given .txt file.
 
 ### Design Description
 
