@@ -21,6 +21,15 @@ The compiled exe can take one argument for the source.txt file to be translated 
 ```
 The program will output a .txt file containing the assembly output for the given .txt file.
 
+To run included testcase files, run 
+```
+./main test1.txt out.txt
+```
+or
+```
+./main test2.txt out.txt
+```
+
 ### Design Description
 
 #### Variable.h
