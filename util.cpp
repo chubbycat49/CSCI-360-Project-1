@@ -123,7 +123,7 @@ vector<string> loadFile(string filename, int &maxlen)
     }
     else
     {
-        cout << "Opening file successful" << endl;
+        cout << "Opened " + filename + " successfully." << endl;
     }
 
     vector<string> sourceCode;

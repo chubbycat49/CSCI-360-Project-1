@@ -1431,20 +1431,30 @@ void assignment_handler(string &s, Function &f1) {
     }
 }
 
-int main() {
+int main(int argc, char* argv[]) {
+    if (argc != 3) {
+        cout << "Please proved an input file and output file name. Exitting..." << endl;
+        return 0;
+    }
+
+    string input_fn = argv[1];
+    string output_fn = argv[2];
+
     int max_len = 0;
-    vector<string> source = loadFile("test1.cpp", max_len);
+    vector<string> source = loadFile(input_fn, max_len);
 
     function_handler(source, 0, max_len);
 
-    // view_function(functions[0], true);
+    cout << "Finished translating file. Outputting to: " << output_fn << endl;
 
-    ofstream fileOUT("out.txt", ios::out | ios::trunc);
+    ofstream fileOUT(output_fn, ios::out | ios::trunc);
     fileOUT.close();
 
     for (Function f : functions) {
-        writeFile("out.txt", f.assembly_instructions, f.function_name);
+        writeFile(output_fn, f.assembly_instructions, f.function_name);
     }
+
+    cout << "Finished writing to: " << output_fn << endl;
 
     return 0;
 }
