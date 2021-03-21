@@ -73,10 +73,14 @@ This class contains the core functions for the program.
 `void arithmetic_handler(string &s, Function &f1, bool store_result = true)`
 * Function to translate arithmetic instructions for addition subtraction and multiplication.
 
-Source Code Style Requirements  
-Indentation: Tabs  
-Curly braces: Inline  
-Spaces between variable name/equals/value  
-Scalar/Dynamic variables initialized on different lines  
-Comments: Own lines  
-Else: same line as closing if curly brace  
+# Source Code Style Requirements  
+- Indentation: Tabs  
+- Inline opening curly braces  
+  - e.g. `main(){`
+- Spaces between variable name/equals/value  
+  - e.g. `i = 0`
+- Scalar/Dynamic variables initialized on different lines  
+- No comments  
+- Return statements required even in void functions and `main`  
+- No inline `++` or `--` 
+  - e.g. `while(i++ > 0)` is not allowed
