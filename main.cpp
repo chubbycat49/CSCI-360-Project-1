@@ -1032,9 +1032,10 @@ void assignment_handler(string &s, Function &f1)
     }
 }
 
-int main() {
+int main(int argc, char **argv) {
     int max_len = 0;
-    vector<string> source = loadFile("test1.cpp", max_len);
+    string inputFile = argv[1];
+    vector<string> source = loadFile(inputFile, max_len);
 
     function_handler(source, 0, max_len);
 
