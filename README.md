@@ -22,7 +22,7 @@ The program will output a out.txt file containing the assembly output for the gi
 This class represents a variable. It contains the information of a variable such as the type, name, offset and value.
 
 #### Function.h
-This class represents a function. It contains the information of a function such as the return type and name. It holds the variables of a function in a `map<string, variable>`. Aswell as a `bool` to indicate if the function is a leaf function.
+This class represents a function. It contains the information of a function such as the return type and name. It holds the variables of a function in a `map<string, variable>`. As well as a `bool` to indicate if the function is a leaf function.
 
 #### util.h
 This class contains helper functions. It contains functionality to parse source code lines for translation. Functions to indicate whether an instruction accesses array elements. And functions to read and write .txt files.
