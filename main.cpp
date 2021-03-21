@@ -25,8 +25,8 @@ void view_function(Function f1, bool show_vars)
     {
         cout << x << endl;
     }
-
-    if (show_vars)
+    
+    if (show_vars) 
     {
         for (auto const &x : f1.variables)
         {
@@ -80,7 +80,7 @@ map<string,Variable> variable_handler(string input_str, int& addr_offset) {
             string name = array_name + "[" + to_string(i) + "]";
             int arr_addr_offset = addr_offset - (i * 4);
 
-            Variable var(name, "intptr", 0, arr_addr_offset);
+            Variable var(name, "intptr", 0, arr_addr_offset, true);
             out.insert(pair<string, Variable>(name, var));
         }
         addr_offset -= (array_size * 4);
@@ -90,7 +90,7 @@ map<string,Variable> variable_handler(string input_str, int& addr_offset) {
       string var_type = tmp[0];
       string var_name = tmp[1];
 
-      Variable var (var_name, var_type, 0, addr_offset);
+      Variable var (var_name, var_type, 0, addr_offset, true);
       out.insert(pair<string, Variable> (var_name, var));
       addr_offset -= 4;
     }
@@ -141,6 +141,21 @@ bool is_arithmetic_line(const string s)
 }
 
 /*
+    Return if variable is a parameter variable
+*/
+bool is_param_var(const string s, Function &f1)
+{
+    string lookup_str = s;
+    if (is_array_accessor_dynamic(s))
+    {
+        string arr_name = s.substr(0, s.find("["));
+
+        lookup_str = arr_name + "[0]";
+    }
+    return f1.variables.at(lookup_str).is_param;
+}
+
+/*
     Helper function to move immediate values into registers
     Pushes required assembly instructions
 */
@@ -187,6 +202,54 @@ void move_arr_val_into_register(const string s, const string reg, Function &f1)
         string arr_start_offset = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
         f1.assembly_instructions.push_back("movl " + arr_start_offset + "(%rbp, %rax, 4), " + reg);
     }
+}
+
+/*
+    Helper function to handle code like a[0] and a[f] which accesses array elements
+    This function is only used when the array is a function parameter
+    Pushes required assembly instructions to get that value into specified register
+
+    f = d + x[i]
+    leaq    0(,%rax,4), %rdx
+    movq    -40(%rbp), %rax
+    addq    %rdx, %rax
+    movl    (%rax), %edx
+
+    f = d + x[0]
+    movq    -40(%rbp), %rax
+    movl    (%rax), %edx
+
+    f = d + x[2]
+    movq    -40(%rbp), %rax
+    addq    $8, %rax
+    movl    (%rax), %edx
+*/
+void move_param_arr_val_into_register(const string s, const string reg, Function &f1)
+{
+    string arr_name = s.substr(0, s.find("["));
+    string arr_index = substr_between_indices(s, s.find("[") + 1, s.find("]"));
+    string arr_zero_index = to_string(f1.variables.at(arr_name + "[0]").addr_offset);
+
+    if (is_array_accessor_dynamic(s))
+    {
+        move_var_val_into_register(arr_index, "%eax", f1);
+        f1.assembly_instructions.push_back("cltq");
+        f1.assembly_instructions.push_back("leaq 0(,%rax,4), %rdx");
+        f1.assembly_instructions.push_back("movq " + arr_zero_index + "(%rbp), %rax");
+        f1.assembly_instructions.push_back("addq %rdx, %rax");
+    }
+    else
+    {
+        f1.assembly_instructions.push_back("movq " + arr_zero_index + "(%rbp), %rax");
+
+        if (arr_index != "0")
+        {
+            string addq_amt = "$" + to_string(stoi(arr_index) * 4);
+            f1.assembly_instructions.push_back("addq " + addq_amt + ", %rax");
+        }
+    }
+
+    f1.assembly_instructions.push_back("movl (%rax), %edx");
 }
 
 /*
@@ -391,9 +454,10 @@ void comparison_handler(string &s, Function &f1, bool jump_if_false)
     }
 }
 
+/*
+    Create a function object, get function return type and function name
+*/
 void function_handler(vector<string> source, int loc, int max_len) {
-    // Create a function object, get function return type and function name
-
     Function f1;
     string head = source[loc];
     f1.return_type = head.substr(0, head.find(' '));  // get return type
@@ -416,13 +480,11 @@ void function_handler(vector<string> source, int loc, int max_len) {
         // variable_handler makes variable for e[0], e[1], e[2], increaseing number of parameters
         f1.variables = variable_handler(parameter_str, addr_offset);
 
-        // need to exclude e[1], e[2] from this loop
-        // actual_function params does that
-        for (auto &varpair : actual_function_params(f1.variables)) {
+        for (auto &varpair : f1.variables) {
             Variable var = varpair.second;
 
-            if (var.name.size() > 1 && var.name.substr(1) != "[0]" && number_of_parameter <=6)
-              continue; // i.e., 'e[1]' doesn't need to be dealt with separately.
+            if (var.name.size() > 1 && var.name.substr(1) != "[0]" && number_of_parameter <= 6)
+                continue;  // i.e., 'e[1]' doesn't need to be dealt with separately.
 
             number_of_parameter++;
             // First 6 parameters <- registers
@@ -438,8 +500,6 @@ void function_handler(vector<string> source, int loc, int max_len) {
                 // 16 = return address + saved %rbp
             } else {
                 f1.variables.at(varpair.first).addr_offset = 16 + (number_of_parameter - 6 - 1) * 4;
-                // since these vars get moved to above rbp, next avalible spot needs to move up as well
-                addr_offset += 4;
             }
         }
     }
@@ -760,7 +820,6 @@ void function_call_handler(string input_str, Function &f1) {
 
   // Place first 6 parameters onto stack in reverse order
   // The first parameter gets saved away in %eax so %rdi can be used to push
-
   tokens = split(params, ",");
   trim_vector(tokens);
   vector<string> paramsv;
@@ -879,54 +938,170 @@ void arithmetic_handler(string &s, Function &f1, bool store_result)
     if (is_substr(s, "++"))
     {
         string var = substr_between_indices(s, 0, s.find("++"));
-        if (is_array_accessor_dynamic(var)) {
+        if (is_array_accessor_dynamic(var))
+        {
             // a[i]++;
             string arr_name = s.substr(0, s.find("["));
             string arr_index = substr_between_indices(s, s.find("[") + 1, s.find("]"));
             string arr_zero = arr_name + "[0]";
 
-            move_arr_val_into_register(var, "%eax", f1);
-            f1.assembly_instructions.push_back("leal 1(%rax), %edx");
-            f1.assembly_instructions.push_back("movl "+ to_string(f1.variables.at(arr_index).addr_offset) +"(%rbp), %eax");
-            f1.assembly_instructions.push_back("cltq");
-            // movl    %edx, -16(%rbp,%rax,4)
-            // -16(%rbp)[4*%rax]
-            f1.assembly_instructions.push_back("movl %edx, " + to_string(f1.variables.at(arr_zero).addr_offset) + "(%rbp, %rax, 4)");
-        } else if (is_array_accessor(var)) {
+            if (is_param_var(var, f1))
+            {
+                // param[i]++
+                move_param_arr_val_into_register(var, "%edx", f1);
+                f1.assembly_instructions.push_back("addl $1, %edx");
+                f1.assembly_instructions.push_back("movl %edx, (%rax)");
+            }
+            else
+            {
+                move_arr_val_into_register(var, "%eax", f1);
+                f1.assembly_instructions.push_back("leal 1(%rax), %edx");
+                f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(arr_index).addr_offset) + "(%rbp), %eax");
+                f1.assembly_instructions.push_back("cltq");
+
+                // movl    %edx, -16(%rbp,%rax,4)
+                // -16(%rbp)[4*%rax]
+                f1.assembly_instructions.push_back("movl %edx, " + to_string(f1.variables.at(arr_zero).addr_offset) + "(%rbp, %rax, 4)");
+            }
+        }
+        else if (is_array_accessor(var))
+        {
             // a[0]++;
-            move_arr_val_into_register(var, "%eax", f1);
-            f1.assembly_instructions.push_back("addl $1, %eax");
-            store_reg_val(var, "%eax", f1);
-        } else {
+            string arr_name = s.substr(0, s.find("["));
+            string arr_index = substr_between_indices(s, s.find("[") + 1, s.find("]"));
+            string arr_addr = to_string(f1.variables.at(var).addr_offset);
+
+            if (is_param_var(var, f1))
+            {
+                if (arr_index == "0")
+                {
+                    /*
+                        param[0]++
+
+                        movq    -40(%rbp), %rax
+                        movl    (%rax), %eax
+                        leal    1(%rax), %edx
+                        movq    -40(%rbp), %rax
+                        movl    %edx, (%rax)
+                    */
+                    f1.assembly_instructions.push_back("movq " + arr_addr + "(%rbp), %rax");
+                    f1.assembly_instructions.push_back("movl (%rax), %eax");
+                    f1.assembly_instructions.push_back("leal 1(%rax), %edx");
+                    f1.assembly_instructions.push_back("movq " + arr_addr + "(%rbp), %rax");
+                }
+                else
+                {
+                    /*
+                        param[2]++
+
+                        movq    -40(%rbp), %rax
+                        addq    $8, %rax
+                        movl    (%rax), %edx
+                        addl    $1, %edx
+                        movl    %edx, (%rax)
+                    */
+                    move_param_arr_val_into_register(var, "%edx", f1);
+                    f1.assembly_instructions.push_back("addl $1, %edx");
+                }
+
+                f1.assembly_instructions.push_back("movl %edx, (%rax)");
+            }
+            else
+            {
+                move_arr_val_into_register(var, "%eax", f1);
+                f1.assembly_instructions.push_back("addl $1, %eax");
+                store_reg_val(var, "%eax", f1);
+            }
+        }
+        else
+        {
             // i++;
             f1.assembly_instructions.push_back("addl $1, " + to_string(f1.variables.at(var).addr_offset) + "(%rbp");
         }
+        store_result = false;
     }
     else if (is_substr(s, "--"))
     {
         string var = substr_between_indices(s, 0, s.find("--"));
-        if (is_array_accessor_dynamic(var)) {
+        if (is_array_accessor_dynamic(var))
+        {
             // a[i]--;
+            if (is_param_var(var, f1))
+            {
+                // param[i]++
+                move_param_arr_val_into_register(var, "%edx", f1);
+                f1.assembly_instructions.push_back("subl $1, %edx");
+                f1.assembly_instructions.push_back("movl %edx, (%rax)");
+            }
+            else
+            {
+                string arr_name = s.substr(0, s.find("["));
+                string arr_index = substr_between_indices(s, s.find("[") + 1, s.find("]"));
+                string arr_zero = arr_name + "[0]";
+
+                move_arr_val_into_register(var, "%eax", f1);
+                f1.assembly_instructions.push_back("leal -1(%rax), %edx");
+                f1.assembly_instructions.push_back("movl " + to_string(f1.variables.at(arr_index).addr_offset) + "(%rbp), %eax");
+                f1.assembly_instructions.push_back("cltq");
+                // movl    %edx, -16(%rbp,%rax,4)
+                // -16(%rbp)[4*%rax]
+                f1.assembly_instructions.push_back("movl %edx, " + to_string(f1.variables.at(arr_zero).addr_offset) + "(%rbp, %rax, 4)");
+            }
+        }
+        else if (is_array_accessor(var))
+        {
+            // a[0]--;
             string arr_name = s.substr(0, s.find("["));
             string arr_index = substr_between_indices(s, s.find("[") + 1, s.find("]"));
-            string arr_zero = arr_name + "[0]";
+            string arr_addr = to_string(f1.variables.at(var).addr_offset);
 
-            move_arr_val_into_register(var, "%eax", f1);
-            f1.assembly_instructions.push_back("leal -1(%rax), %edx");
-            f1.assembly_instructions.push_back("movl "+ to_string(f1.variables.at(arr_index).addr_offset) +"(%rbp), %eax");
-            f1.assembly_instructions.push_back("cltq");
-            // movl    %edx, -16(%rbp,%rax,4)
-            // -16(%rbp)[4*%rax]
-            f1.assembly_instructions.push_back("movl %edx, " + to_string(f1.variables.at(arr_zero).addr_offset) + "(%rbp, %rax, 4)");
-        } else if (is_array_accessor(var)) {
-            // a[0]--;
-            move_arr_val_into_register(var, "%eax", f1);
-            f1.assembly_instructions.push_back("subl $1, %eax");
-            store_reg_val(var, "%eax", f1);
-        } else {
+            if (is_param_var(var, f1))
+            {
+                if (arr_index == "0")
+                {
+                    /*
+                        param[0]++
+
+                        movq    -40(%rbp), %rax
+                        movl    (%rax), %eax
+                        leal    1(%rax), %edx
+                        movq    -40(%rbp), %rax
+                        movl    %edx, (%rax)
+                    */
+                    f1.assembly_instructions.push_back("movq " + arr_addr + "(%rbp), %rax");
+                    f1.assembly_instructions.push_back("movl (%rax), %eax");
+                    f1.assembly_instructions.push_back("leal -1(%rax), %edx");
+                    f1.assembly_instructions.push_back("movq " + arr_addr + "(%rbp), %rax");
+                }
+                else
+                {
+                    /*
+                        param[2]++
+
+                        movq    -40(%rbp), %rax
+                        addq    $8, %rax
+                        movl    (%rax), %edx
+                        addl    $1, %edx
+                        movl    %edx, (%rax)
+                    */
+                    move_param_arr_val_into_register(var, "%edx", f1);
+                    f1.assembly_instructions.push_back("subl $1, %edx");
+                }
+
+                f1.assembly_instructions.push_back("movl %edx, (%rax)");
+            } else
+            {
+                move_arr_val_into_register(var, "%eax", f1);
+                f1.assembly_instructions.push_back("subl $1, %eax");
+                store_reg_val(var, "%eax", f1);
+            }
+        }
+        else
+        {
             // i--;
             f1.assembly_instructions.push_back("subl $1, " + to_string(f1.variables.at(var).addr_offset) + "(%rbp");
         }
+        store_result = false;
     }
     else
     {
