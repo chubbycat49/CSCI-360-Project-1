@@ -414,6 +414,7 @@ void function_handler(vector<string> source, int loc, int max_len) {
     string tempstr = head.substr(head.find(' ') + 1, head.length());
     f1.function_name = tempstr.substr(0, tempstr.find('('));  // get fxn name
     f1.assembly_instructions.push_back(f1.function_name + ":");
+    f1.assembly_instructions.push_back("#" + substr_between_indices(source[loc], 0, source[loc].find(")") + 1));
     f1.assembly_instructions.push_back("pushq %rbp");
     f1.assembly_instructions.push_back("movq %rsp, %rbp");
     f1.is_leaf_function = true;

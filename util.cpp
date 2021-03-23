@@ -125,7 +125,7 @@ vector<string> loadFile(string filename, int &maxlen) {
 
 /*
     Helper function to write assembly instruction to a file
-    Add tabs before instruction as spacing
+    Add tabs before instructiown as spacing
     Leaves labels as if
     Adds tab between operation and first operand
     Adds 2 tabs for jump instructions
@@ -135,9 +135,13 @@ void writeFile(string filename, vector<string> assembly, string f_name) {
 
     for (string s : assembly) {
         if (is_substr(s, f_name) || s.find(".L", 0) == 0) {
-            fileOUT << s << endl;  // append "some stuff" to the end of the file
+            if (is_substr(s, "#")) {
+                fileOUT << "\t\t" << s <<  endl;
+            } else {
+                fileOUT << s << endl;
+            }
         } else if (is_substr(s, "#")) {
-            fileOUT << "\t\t" << s << endl;
+            fileOUT << "\n\t\t" << s <<  endl;
         } else {
             int space_idx = s.find(" ");
             if (space_idx != string::npos) {
