@@ -1,0 +1,85 @@
+test:
+		pushq	%rbp
+		movq	%rsp, %rbp
+		movl	%edi, -4(%rbp)
+		movl	%esi, -8(%rbp)
+		movl	%edx, -12(%rbp)
+		movl	%ecx, -16(%rbp)
+		movq	%r8, -20(%rbp)
+		movl	%r9d, -32(%rbp)
+		#int i = 0;
+		movl	$0, -36(%rbp)
+		#a = c + b;
+		movl	-12(%rbp), %edx
+		movl	-8(%rbp), %eax
+		addl	%edx, %eax
+		movl	%eax, -4(%rbp)
+		#d = a * g;
+		movl	-4(%rbp), %eax
+		imull	16(%rbp), %eax
+		movl	%eax, -16(%rbp)
+		#f = d - e[i];
+		movl	-36(%rbp), %eax
+		cltq
+		leaq	0(,%rax,4), %rdx
+		movq	-20(%rbp), %rax
+		addq	%rdx, %rax
+		movl	(%rax), %%eax
+		movl	-16(%rbp), %edx
+		subl	%eax, %edx
+		movl	%edx, %eax
+		movl	%eax, -32(%rbp)
+		#i = f + h[i];
+		movl	-36(%rbp), %eax
+		cltq
+		leaq	0(,%rax,4), %rdx
+		movq	20(%rbp), %rax
+		addq	%rdx, %rax
+		movl	(%rax), %%edx
+		movl	-32(%rbp), %eax
+		addl	%edx, %eax
+		movl	%eax, -36(%rbp)
+		#return i;
+		movl	-36(%rbp), %eax
+		leave
+		ret
+main:
+		pushq	%rbp
+		movq	%rsp, %rbp
+		subq	$48,%rsp
+		#int a = 1, b = 2, c = 3, d = 4;
+		movl	$1, -4(%rbp)
+		movl	$2, -8(%rbp)
+		movl	$3, -12(%rbp)
+		movl	$4, -16(%rbp)
+		#int e[3] = {5, 6, 7};
+		movl	$7, -28(%rbp)
+		movl	$6, -24(%rbp)
+		movl	$5, -20(%rbp)
+		#int f = 8, g = 9;
+		movl	$8, -32(%rbp)
+		movl	$9, -36(%rbp)
+		#int h[2] = {10, 11};
+		movl	$11, -44(%rbp)
+		movl	$10, -40(%rbp)
+		#int i = 0;
+		movl	$0, -48(%rbp)
+		#i = test(a, b, c, d, e, f, g, h);
+		movl	-4(%rbp), %eax
+		movl	-8(%rbp), %esi
+		movl	-12(%rbp), %edx
+		movl	-16(%rbp), %ecx
+		leaq	-20(%rbp), %r8
+		movl	-32(%rbp), %r9d
+		movq	-40(%rbp), %rdi
+		pushq	%rdi
+		movq	-36(%rbp), %rdi
+		pushq	%rdi
+		movl	%eax, %edi
+		call	test
+		addq	$16, %rsp
+		movl	%eax, -48(%rbp)
+		#return 0;
+		movl	$0, %eax
+		leave
+		ret
