@@ -1,9 +1,9 @@
 # CSCI-360-Project-1
 
 Group Members  
-Kun Yu  
-Boaz Kaufman  
-Mariglen Jahaj  
+Kun Yu  - Variable Declaration / IF Statement  
+Boaz Kaufman - Call Statement / Return Statement  
+Mariglen Jahaj - For Statement / Arithmetic Statement  
 
 ## Background
 
